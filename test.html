@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>カホン画面</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f0f0f0;
+            margin: 0;
+            padding: 0;
+        }
+        .screen {
+            display: none;
+            padding: 20px;
+            max-width: 600px;
+            margin: auto;
+            background-color: #fff;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        .screen h1 {
+            font-size: 24px;
+            margin-bottom: 20px;
+        }
+        .screen p, .screen ul, .screen form {
+            font-size: 18px;
+            margin-bottom: 20px;
+        }
+        .screen button {
+            padding: 10px 20px;
+            font-size: 16px;
+            margin: 5px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        #startupScreen button {
+            background-color: #007bff;
+            color: #fff;
+        }
+        .screen ul {
+            list-style-type: none;
+            padding: 0;
+        }
+        .screen ul li {
+            background-color: #e0e0e0;
+            margin: 5px 0;
+            padding: 10px;
+            border-radius: 5px;
+        }
+    </style>
+    <script>
+        function showScreen(screenId) {
+            document.querySelectorAll('.screen').forEach(screen => screen.classList.add('hidden'));
+            document.getElementById(screenId).classList.remove('hidden');
+        }
+    </script>
+</head>
+<body>
+    <!-- 起動画面 -->
+    <div id="startupScreen" class="screen">
+        <h1>Music Start</h1>
+        <p>V1.00.00</p>
+        <button onclick="showScreen('menuListScreen')">音楽起動</button>
+    </div>
+
+    <!-- メニューリスト画面 -->
+    <div id="menuListScreen" class="screen hidden">
+        <h1>メニューリスト画面</h1>
+        <ul>
+            <li>曲名1</li>
+            <li>曲名2</li>
+            <li>曲名3</li>
+            <li>曲名4</li>
+            <li>曲名5</li>
+            <li>曲名6</li>
+        </ul>
+        <button onclick="showScreen('menu1Screen')">メニュー1へ</button>
+        <button onclick="showScreen('menu2Screen')">メニュー2へ</button>
+        <button onclick="showScreen('playScreen')">再生画面へ</button>
+    </div>
+
+    <!-- メニュー1画面 -->
+    <div id="menu1Screen" class="screen hidden">
+        <h1>メニュー1画面</h1>
+        <form>
+            <label for="item1">項目1:</label>
+            <input type="text" id="item1" style="font-size: 16px;"><br>
+            <label for="item2">項目2:</label>
+            <input type="text" id="item2" style="font-size: 16px;"><br>
+        </form>
+        <button onclick="showScreen('menuListScreen')">戻る</button>
+        <button onclick="alert('決定')">決定</button>
+    </div>
+
+    <!-- メニュー2画面 -->
+    <div id="menu2Screen" class="screen hidden">
+        <h1>メニュー2画面</h1>
+        <form>
+            <label for="item3">項目1:</label>
+            <input type="text" id="item3" style="font-size: 16px;"><br>
+            <label for="item4">項目2:</label>
+            <input type="text" id="item4" style="font-size: 16px;"><br>
+        </form>
+        <button onclick="showScreen('menuListScreen')">戻る</button>
+        <button onclick="alert('決定')">決定</button>
+    </div>
+
+    <!-- 再生画面 -->
+    <div id="playScreen" class="screen hidden">
+        <h1>再生画面</h1>
+        <p>曲名1</p>
+        <progress value="0" max="100"></progress>
+        <br>
+        <button onclick="alert('再生')">再生</button>
+        <button onclick="showScreen('menuListScreen')">停止</button>
+    </div>
+
+    <script>
+        // 初期画面を表示
+        document.addEventListener('DOMContentLoaded', () => {
+            showScreen('startupScreen');
+        });
+    </script>
+</body>
+</html>

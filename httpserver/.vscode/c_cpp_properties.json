@@ -1,0 +1,21 @@
+{
+    "configurations": [
+        {
+            "name": "Win32",
+            "includePath": [
+                "${workspaceFolder}/**",
+                "C:/Projects/Mproject/libraries",
+                "C:/Users/smzuser/AppData/Local/Arduino15/packages/m5stack/hardware/esp32/2.1.1/**",
+                "C:/Users/smzuser/AppData/Local/Arduino15/packages/rp2040/tools/**",
+                "C:/Users/smzuser/AppData/Local/Arduino15/packages/m5stack/hardware/esp32/2.1.1/libraries/Wire/src/**",
+                "C:/Users/smzuser/AppData/Local/Arduino15/packages/m5stack/hardware/esp32/2.1.1/libraries/Wire/src/**"
+            ],
+            "defines": [
+                "_DEBUG",
+                "UNICODE",
+                "_UNICODE"
+            ]
+        }
+    ],
+    "version": 4
+}
