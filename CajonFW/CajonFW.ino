@@ -1,6 +1,9 @@
 #include <WiFi.h>
 #include <WebServer.h>
 #include <M5Unified.h>
+#include "HwInit/hwinit.h"
+#include "FMG/FMG.h"
+#include "SLD/SLD.h"
 
 const char* ssid = "M5StampAP"; // アクセスポイントのSSID
 const char* password = "your_PASSWORD"; // アクセスポイントのパスワード
@@ -16,43 +19,6 @@ QueueHandle_t ledQueue;
 
 void display_init();
 void display_update();
-
-void handleRoot() {
-  String html = "<html><body><h1>LED Control</h1><button onclick=\"location.href='/led/on'\">Turn On</button><button onclick=\"location.href='/led/off'\">Turn Off</button></body></html>";
-  server.send(200, "text/html", html);
-}
-
-void handleLedOn() {
-  int command = 1; // LED ONコマンド
-  xQueueSend(ledQueue, &command, portMAX_DELAY);
-  server.send(200, "text/html", "<html><body><h1>LED is ON</h1><a href='/'>Go Back</a></body></html>");
-}
-
-void handleLedOff() {
-  int command = 0; // LED OFFコマンド
-  xQueueSend(ledQueue, &command, portMAX_DELAY);
-  server.send(200, "text/html", "<html><body><h1>LED is OFF</h1><a href='/'>Go Back</a></body></html>");
-}
-
-void httpServerTask(void *pvParameters) {
-  // アクセスポイントとして動作するように設定
-  WiFi.softAP(ssid, password);
-  IPAddress IP = WiFi.softAPIP();
-  Serial.print("AP IP address: ");
-  Serial.println(IP);
-
-  server.on("/", handleRoot);
-  server.on("/led/on", handleLedOn);
-  server.on("/led/off", handleLedOff);
-
-  server.begin();
-  Serial.println("HTTP server started");
-
-  while (true) {
-    server.handleClient();
-    delay(10);
-  }
-}
 
 void ledControlTask(void *pvParameters) {
   int command;
@@ -76,15 +42,22 @@ void setup() {
   M5.begin();
   Serial.begin(115200);
   display_init();
+
+
   
   // LED制御のためのキューを作成
   ledQueue = xQueueCreate(10, sizeof(int));
 
   // HTTPサーバータスクをCore 1で実行
-  xTaskCreatePinnedToCore(httpServerTask, "HTTP Server Task", 4096, NULL, 1, NULL, 1);
+  // xTaskCreatePinnedToCore(httpServerTask, "HTTP Server Task", 4096, NULL, 1, NULL, 1);
 
-  // LED制御タスクをCore 0で実行
-  xTaskCreatePinnedToCore(ledControlTask, "LED Control Task", 1024, NULL, 1, NULL, 0);
+  // ファイル管理タスクの作成
+  xTaskCreatePinnedToCore(FMGTask, "FMGTask", 2048, NULL, 1, NULL, 0);
+
+  for (uint8_t ucFetCh = 1; i <= 8; i++) {
+    // SLD制御タスクの作成
+    xTaskCreatePinnedToCore(SLDTask, "SLDTask", 2048, &ucFetCh, NULL, 1, NULL, 0);
+  }
 }
 
 void loop() {
