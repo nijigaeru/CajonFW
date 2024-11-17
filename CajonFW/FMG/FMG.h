@@ -9,9 +9,11 @@ extern QueueHandle_t g_pstFMGQueue;
 
 // 要求の種類
 enum FMGRequestType {
-  FMG_SD_SET
+  FMG_SD_SET,
+  FMG_SD_CLR,
   FMG_OPEN,
   FMG_CLOSE,
+  FMG_GET_SND_LIST,
   FMG_READ
 };
 

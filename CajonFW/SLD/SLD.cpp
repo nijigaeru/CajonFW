@@ -38,6 +38,7 @@ void SLDTask(void* pvParameters) {
 
   // 初期化完了フラグ
   g_ulSLDInitFlg[ucFetCh-1] = true:
+  Serial.println("SLD(%d) initialized.", ucFetCh);
 
   while (true) {
     SLDRequest request;

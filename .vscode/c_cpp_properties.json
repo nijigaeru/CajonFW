@@ -4,10 +4,14 @@
             "name": "Win32",
             "includePath": [
                 "${workspaceFolder}/**",
-                "C:/Users/chack/AppData/Local/Arduino15/packages/esp32/tools/esp32-arduino-libs/idf-release_v5.1-33fbade6/esp32s3/include/freertos/FreeRTOS-Kernel/include/freertos/**",
-                "C:/Users/chack/AppData/Local/Arduino15/libraries/**",
-                "C:/Users/chack/AppData/Local/Arduino15/packages/esp32/tools/esp32-arduino-libs/idf-release_v5.1-33fbade6/esp32s3/**"
-                
+                "C:/Users/chack/Documents/Arduino/libraries/**",
+                "C:/Users/chack/AppData/Local/Arduino15/packages/esp32/hardware/esp32/3.0.7/**",
+                "C:/Users/chack/AppData/Local/Arduino15/packages/esp32/hardware/esp32/3.0.7/libraries/Wire/src**",
+                "C:/Users/chack/AppData/Local/Arduino15/packages/esp32/tools/esp32-arduino-libs/idf-release_v5.1-632e0c2a/esp32s3/include/**/**",
+                "C:/Users/chack/AppData/Local/Arduino15/packages/esp32/tools/esp32-arduino-libs/idf-release_v5.1-632e0c2a/esp32s3/include/freertos/FreeRTOS-Kernel/include/freertos/**",
+                "C:/Users/chack/AppData/Local/Arduino15/packages/esp32/tools/esp-xs3/2302/xtensa-esp32s3-elf/sys-include/**",
+                "C:/Users/chack/AppData/Local/Arduino15/packages/esp32/tools/esp-xs3/2302/lib/gcc/xtensa-esp32s3-elf/12.2.0/include/**",
+                "C:/Users/chack/AppData/Local/Arduino15/packages/esp32/tools/esp-xs3/2302/xtensa-esp32s3-elf/include/c++/12.2.0/tr1/**"
             ],
             "defines": [
                 "_DEBUG",

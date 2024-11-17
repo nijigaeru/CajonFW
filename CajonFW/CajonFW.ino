@@ -4,6 +4,7 @@
 #include "HwInit/hwinit.h"
 #include "FMG/FMG.h"
 #include "SLD/SLD.h"
+#include "SW/SW.h"
 
 const char* ssid = "M5StampAP"; // アクセスポイントのSSID
 const char* password = "your_PASSWORD"; // アクセスポイントのパスワード
@@ -43,8 +44,9 @@ void setup() {
   Serial.begin(115200);
   display_init();
 
+  // HW初期化
+  HwInit();
 
-  
   // LED制御のためのキューを作成
   ledQueue = xQueueCreate(10, sizeof(int));
 
@@ -54,10 +56,11 @@ void setup() {
   // ファイル管理タスクの作成
   xTaskCreatePinnedToCore(FMGTask, "FMGTask", 2048, NULL, 1, NULL, 0);
 
-  for (uint8_t ucFetCh = 1; i <= 8; i++) {
+  for (uint8_t ucFetCh = 1; ucFetCh <= 8; ucFetCh++) {
     // SLD制御タスクの作成
-    xTaskCreatePinnedToCore(SLDTask, "SLDTask", 2048, &ucFetCh, NULL, 1, NULL, 0);
+    xTaskCreatePinnedToCore(SLDTask, "SLDTask", 2048, &ucFetCh, 1, NULL, 0);
   }
+  SWInit();
 }
 
 void loop() {
