@@ -6,8 +6,8 @@
 
 /******** include ***** */
 #include <Arduino.h>
-#include <FreeRTOS.h>
-#include "HwInit/pinasign.h"
+#include <M5Unified.h>
+#include "pinasign.h"
 #include "SW.h"
 #include "FMG/FMG.h"
 #include "SLD/SLD.h"

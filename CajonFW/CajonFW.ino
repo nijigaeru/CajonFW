@@ -1,10 +1,10 @@
 #include <WiFi.h>
 #include <WebServer.h>
 #include <M5Unified.h>
-#include "HwInit/hwinit.h"
-#include "FMG/FMG.h"
-#include "SLD/SLD.h"
-#include "SW/SW.h"
+#include "hwinit.h"
+#include "FMG.h"
+#include "SLD.h"
+#include "SW.h"
 
 const char* ssid = "M5StampAP"; // アクセスポイントのSSID
 const char* password = "your_PASSWORD"; // アクセスポイントのパスワード

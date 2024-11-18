@@ -1,8 +1,8 @@
 #include <Arduino.h>
-#include <FreeRTOS.h>
+#include <M5Unified.h>
 #include <queue.h>
 #include "SLD.h"
-#include "HwInit/pinasign.h"
+#include "pinasign.h"
 
 // ソレノイド駆動時間（ミリ秒）
 #define SLD_ON_TIME 1000
@@ -11,7 +11,7 @@
 
 // キューの定義
 QueueHandle_t g_pstSLDQueue[SLD_NUM];
-bool g_ulSLDInitFlg[SLDNUM] = flase;
+bool g_ulSLDInitFlg[SLD_NUM] = flase;
 
 
 // ソレノイド駆動タスク
