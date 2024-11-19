@@ -9,8 +9,8 @@
 #include <M5Unified.h>
 #include "pinasign.h"
 #include "SW.h"
-#include "FMG/FMG.h"
-#include "SLD/SLD.h"
+#include "FMG.h"
+#include "SLD.h"
 
 /******** macro  ***** */
 #define LONG_PUSH_TIME  1000   // 長押し判定時間(msec)
@@ -19,10 +19,10 @@
 /******** global variable  ***** */
 TS_SWParam stSWParam[4] = 
 {
-  {SLD_TURN_ON, g_pstSLDQueue[0], SLD_TURN_ON, g_pstSLDQueue[4] 0},
-  {SLD_TURN_ON, g_pstSLDQueue[1], SLD_TURN_ON, g_pstSLDQueue[5] 0},
-  {SLD_TURN_ON, g_pstSLDQueue[2], SLD_TURN_ON, g_pstSLDQueue[6] 0},
-  {SLD_TURN_ON, g_pstSLDQueue[3], SLD_TURN_ON, g_pstSLDQueue[7] 0},
+  {SLD_TURN_ON, &g_pstSLDQueue[0], SLD_TURN_ON, &g_pstSLDQueue[4] 0},
+  {SLD_TURN_ON, &g_pstSLDQueue[1], SLD_TURN_ON, &g_pstSLDQueue[5] 0},
+  {SLD_TURN_ON, &g_pstSLDQueue[2], SLD_TURN_ON, &g_pstSLDQueue[6] 0},
+  {SLD_TURN_ON, &g_pstSLDQueue[3], SLD_TURN_ON, &g_pstSLDQueue[7] 0},
 }
 
 ;

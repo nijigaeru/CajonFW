@@ -160,6 +160,9 @@ void requestFilesWithExtension(const String& ext) {
   }
 }
 
+std::vector<String> htmlFiles;
+std::vector<String> csvFiles;
+
 void listDir(fs::FS &fs, const char * dirname, uint8_t levels, uint8_t indent) {
     File root = fs.open(dirname);
     if (!root) {
@@ -187,7 +190,28 @@ void listDir(fs::FS &fs, const char * dirname, uint8_t levels, uint8_t indent) {
             Serial.print(file.name());
             Serial.print("\tSIZE: ");
             Serial.println(file.size());
+
+            // 拡張子をチェックしてリストに追加
+            String fileName = file.name();
+            if (fileName.endsWith(".html")) {
+                htmlFiles.push_back(fileName);
+            } else if (fileName.endsWith(".csv")) {
+                csvFiles.push_back(fileName);
+            }
         }
         file = root.openNextFile();
     }
 }
+    listDir(SD, "/", 0, 0);
+
+    // .htmlファイルのリストを表示
+    Serial.println("\n.html files:");
+    for (const auto& file : htmlFiles) {
+        Serial.println(file);
+    }
+
+    // .csvファイルのリストを表示
+    Serial.println("\n.csv files:");
+    for (const auto& file : csvFiles) {
+        Serial.println(file);
+    }
