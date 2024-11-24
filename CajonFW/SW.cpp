@@ -6,23 +6,23 @@
 
 /******** include ***** */
 #include <Arduino.h>
-#include <M5Unified.h>
+#include <esp32-hal-gpio.h>
 #include "pinasign.h"
 #include "SW.h"
 #include "FMG.h"
 #include "SLD.h"
 
 /******** macro  ***** */
-#define LONG_PUSH_TIME  1000   // 長押し判定時間(msec)
-#define SW_INVALID_TIME 10      // 無効時間(msec)
+#define LONG_PUSH_TIME  10000   // 長押し判定時間(msec)
+#define SW_INVALID_TIME 100     // 無効時間(msec)
 
 /******** global variable  ***** */
 TS_SWParam stSWParam[4] = 
 {
-  {SLD_TURN_ON, &g_pstSLDQueue[0], SLD_TURN_ON, &g_pstSLDQueue[4] 0},
-  {SLD_TURN_ON, &g_pstSLDQueue[1], SLD_TURN_ON, &g_pstSLDQueue[5] 0},
-  {SLD_TURN_ON, &g_pstSLDQueue[2], SLD_TURN_ON, &g_pstSLDQueue[6] 0},
-  {SLD_TURN_ON, &g_pstSLDQueue[3], SLD_TURN_ON, &g_pstSLDQueue[7] 0},
+  {SLD_TURN_ON, &g_pstSLDQueue[0], SLD_TURN_ON, &g_pstSLDQueue[4], 0},
+  {SLD_TURN_ON, &g_pstSLDQueue[1], SLD_TURN_ON, &g_pstSLDQueue[5], 0},
+  {SLD_TURN_ON, &g_pstSLDQueue[2], SLD_TURN_ON, &g_pstSLDQueue[6], 0},
+  {SLD_TURN_ON, &g_pstSLDQueue[3], SLD_TURN_ON, &g_pstSLDQueue[7], 0},
 }
 
 ;
@@ -36,19 +36,18 @@ void IRAM_ATTR SW4Interrupt();      // SW4の割り込み
 /************************** */
 // ファイル管理タスク
 void SWInit(void) {
-  File file;
 
   // 割り込み設定: SDカードの挿抜を監視
   attachInterrupt(digitalPinToInterrupt(PIN_SW1), SW1Interrupt, CHANGE);
 
   // 割り込み設定: SDカードの挿抜を監視
-  attachInterrupt(digitalPinToInterrupt(PIN_SD_DET), SDDetInterrupt, CHANGE);
+  attachInterrupt(digitalPinToInterrupt(PIN_SW2), SW2Interrupt, CHANGE);
 
   // 割り込み設定: SDカードの挿抜を監視
-  attachInterrupt(digitalPinToInterrupt(PIN_SD_DET), SDDetInterrupt, CHANGE);
+  attachInterrupt(digitalPinToInterrupt(PIN_SW3), SW3Interrupt, CHANGE);
 
   // 割り込み設定: SDカードの挿抜を監視
-  attachInterrupt(digitalPinToInterrupt(PIN_SD_DET), SDDetInterrupt, CHANGE);
+  attachInterrupt(digitalPinToInterrupt(PIN_SW4), SW4Interrupt, CHANGE);
 
 }
 
@@ -62,24 +61,24 @@ void IRAM_ATTR SW1Interrupt() {
   if (digitalRead(PIN_SW1) == LOW) {
     // ボタンが離れた
     TickType_t xTimeNow = xTaskGetTickCount(); 
-    if (xTimeNow - pstSWParam->xTimeNow > LONG_PUSH_TIME) {
+    if ((xTimeNow - pstSWParam->xTimeNow) > LONG_PUSH_TIME) {
       // 長押し
       // 長押し用の要求を通知する
-      int unReq = pstParam->unLongPushReq;
-      xQueueSendFromISR(pstParam->pstLongPushQue, &unReq, &xHigherPriorityTaskWoken);
-    } else if (SW_INVALID_TIME){
+      uint16_t unReq = pstSWParam->unLongPushReq;
+      xQueueSendFromISR(*(pstSWParam->pstLongQue), &unReq, &xHigherPriorityTaskWoken);
+    } else if ((xTimeNow - pstSWParam->xTimeNow) < SW_INVALID_TIME){
       // 何もしない
     } else {
       // 短押し
       // 短押し用の要求を通知する
-      int unReq = pstParam->unShortPushReq;
-      xQueueSendFromISR(pstParam->pstShortPushQue, &unReq, &xHigherPriorityTaskWoken);
+      uint16_t unReq = pstSWParam->unShortPushReq;
+      xQueueSendFromISR(*(pstSWParam->pstShortQue), &unReq, &xHigherPriorityTaskWoken);
     }
   } else {
-    if (pstParam.xTimeNow != 0)
+    if (pstSWParam->xTimeNow != 0)
     {
       // ボタンが押された
-      pstParam.xTimeNow = xTaskGetTickCount(); 
+      pstSWParam->xTimeNow = xTaskGetTickCount(); 
     }
   }
 }
@@ -89,27 +88,27 @@ void IRAM_ATTR SW2Interrupt() {
   portBASE_TYPE xHigherPriorityTaskWoken; 
   xHigherPriorityTaskWoken = pdFALSE;
 
-  if (digitalRead(PIN_SW2) == LOW) {
+  if (digitalRead(PIN_SW2) == HIGH) {
     // ボタンが離れた
     TickType_t xTimeNow = xTaskGetTickCount(); 
     if (xTimeNow - pstSWParam->xTimeNow > LONG_PUSH_TIME) {
       // 長押し
       // 長押し用の要求を通知する
-      int unReq = pstParam->unLongPushReq;
-      xQueueSendFromISR(pstParam->pstLongPushQue, &unReq, &xHigherPriorityTaskWoken);
+      uint16_t unReq = pstSWParam->unLongPushReq;
+      xQueueSendFromISR(*(pstSWParam->pstLongQue), &unReq, &xHigherPriorityTaskWoken);
     } else if (SW_INVALID_TIME){
       // 何もしない
     } else {
       // 短押し
       // 短押し用の要求を通知する
-      int unReq = pstParam->unShortPushReq;
-      xQueueSendFromISR(pstParam->pstShortPushQue, &unReq, &xHigherPriorityTaskWoken);
+      uint16_t unReq = pstSWParam->unShortPushReq;
+      xQueueSendFromISR(*(pstSWParam->pstShortQue), &unReq, &xHigherPriorityTaskWoken);
     }
   } else {
-    if (pstParam.xTimeNow != 0)
+    if (pstSWParam->xTimeNow != 0)
     {
       // ボタンが押された
-      pstParam.xTimeNow = xTaskGetTickCount(); 
+      pstSWParam->xTimeNow = xTaskGetTickCount(); 
     }
   }
 }
@@ -125,21 +124,21 @@ void IRAM_ATTR SW3Interrupt() {
     if (xTimeNow - pstSWParam->xTimeNow > LONG_PUSH_TIME) {
       // 長押し
       // 長押し用の要求を通知する
-      int unReq = pstParam->unLongPushReq;
-      xQueueSendFromISR(pstParam->pstLongPushQue, &unReq, &xHigherPriorityTaskWoken);
+      uint16_t unReq = pstSWParam->unLongPushReq;
+      xQueueSendFromISR(*(pstSWParam->pstLongQue), &unReq, &xHigherPriorityTaskWoken);
     } else if (SW_INVALID_TIME){
       // 何もしない
     } else {
       // 短押し
       // 短押し用の要求を通知する
-      int unReq = pstParam->unShortPushReq;
-      xQueueSendFromISR(pstParam->pstShortPushQue, &unReq, &xHigherPriorityTaskWoken);
+      uint16_t unReq = pstSWParam->unShortPushReq;
+      xQueueSendFromISR(*(pstSWParam->pstShortQue), &unReq, &xHigherPriorityTaskWoken);
     }
   } else {
-    if (pstParam.xTimeNow != 0)
+    if (pstSWParam->xTimeNow != 0)
     {
       // ボタンが押された
-      pstParam.xTimeNow = xTaskGetTickCount(); 
+      pstSWParam->xTimeNow = xTaskGetTickCount(); 
     }
   }
 }
@@ -155,21 +154,21 @@ void IRAM_ATTR SW4Interrupt() {
     if (xTimeNow - pstSWParam->xTimeNow > LONG_PUSH_TIME) {
       // 長押し
       // 長押し用の要求を通知する
-      int unReq = pstParam->unLongPushReq;
-      xQueueSendFromISR(pstParam->pstLongPushQue, &unReq, &xHigherPriorityTaskWoken);
+      uint16_t unReq = pstSWParam->unLongPushReq;
+      xQueueSendFromISR(*(pstSWParam->pstLongQue), &unReq, &xHigherPriorityTaskWoken);
     } else if (SW_INVALID_TIME){
       // 何もしない
     } else {
       // 短押し
       // 短押し用の要求を通知する
-      int unReq = pstParam->unShortPushReq;
-      xQueueSendFromISR(pstParam->pstShortPushQue, &unReq, &xHigherPriorityTaskWoken);
+      uint16_t unReq = pstSWParam->unShortPushReq;
+      xQueueSendFromISR(*(pstSWParam->pstShortQue), &unReq, &xHigherPriorityTaskWoken);
     }
   } else {
-    if (pstParam.xTimeNow != 0)
+    if (pstSWParam->xTimeNow != 0)
     {
       // ボタンが押された
-      pstParam.xTimeNow = xTaskGetTickCount(); 
+      pstSWParam->xTimeNow = xTaskGetTickCount(); 
     }
   }
 }

@@ -1,12 +1,13 @@
 #ifndef _SLD_H_
 #define _SLD_H_
 
-#include <M5Unified.h>
 #include <queue.h>
 #include "reqid.h"
 
+#define SLD_NUM 8
+
 // キューの定義
-extern QueueHandle_t g_pstSLDueue;
+extern QueueHandle_t g_pstSLDQueue[SLD_NUM];
 
 // 要求の種類
 enum SLDRequestType {

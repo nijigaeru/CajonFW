@@ -1,7 +1,6 @@
 #ifndef _SW_H_
 #define _SW_H_
 
-#include <M5Unified.h>
 #include <queue.h>
 
 // キューの定義
@@ -14,9 +13,9 @@
 // 要求の構造体
 typedef struct StagSWParam {
   uint16_t unShortPushReq;
-  QueueHandle_t pstShorQue;
+  QueueHandle_t* pstShortQue;
   uint16_t unLongPushReq;
-  QueueHandle_t pstLongQue;
+  QueueHandle_t* pstLongQue;
   TickType_t xTimeNow; 
 }TS_SWParam;
 
