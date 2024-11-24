@@ -5,7 +5,7 @@
 #include "pinasign.h"
 
 // ソレノイド駆動時間（ミリ秒）
-#define SLD_ON_TIME 1000
+#define SLD_ON_TIME 100
 
 // キューの定義
 QueueHandle_t g_pstSLDQueue[SLD_NUM];

@@ -13,16 +13,16 @@
 #include "SLD.h"
 
 /******** macro  ***** */
-#define LONG_PUSH_TIME  10000   // 長押し判定時間(msec)
+#define LONG_PUSH_TIME  1000   // 長押し判定時間(msec)
 #define SW_INVALID_TIME 100     // 無効時間(msec)
 
 /******** global variable  ***** */
 TS_SWParam stSWParam[4] = 
 {
-  {SLD_TURN_ON, &g_pstSLDQueue[0], SLD_TURN_ON, &g_pstSLDQueue[4], 0},
-  {SLD_TURN_ON, &g_pstSLDQueue[1], SLD_TURN_ON, &g_pstSLDQueue[5], 0},
-  {SLD_TURN_ON, &g_pstSLDQueue[2], SLD_TURN_ON, &g_pstSLDQueue[6], 0},
-  {SLD_TURN_ON, &g_pstSLDQueue[3], SLD_TURN_ON, &g_pstSLDQueue[7], 0},
+  {SLD_TURN_ON, &g_pstSLDQueue[0], SLD_TURN_ON, &g_pstSLDQueue[4], 0, false},
+  {SLD_TURN_ON, &g_pstSLDQueue[1], SLD_TURN_ON, &g_pstSLDQueue[5], 0, false},
+  {SLD_TURN_ON, &g_pstSLDQueue[2], SLD_TURN_ON, &g_pstSLDQueue[6], 0, false},
+  {SLD_TURN_ON, &g_pstSLDQueue[3], SLD_TURN_ON, &g_pstSLDQueue[7], 0, false},
 }
 
 ;
@@ -51,124 +51,73 @@ void SWInit(void) {
 
 }
 
+void SWInteruptProc(TS_SWParam* pstParam, uint32_t ulSWPin)
+{
+  portBASE_TYPE xHigherPriorityTaskWoken; 
+  xHigherPriorityTaskWoken = pdFALSE;
+  if (digitalRead(ulSWPin) == HIGH) {
+    // ボタンが離れた
+    if(pstParam->bSWFlag == true)
+    {
+      TickType_t xTimeNow = xTaskGetTickCountFromISR(); 
+      if ((xTimeNow - pstParam->xTimeNow) > LONG_PUSH_TIME) {
+        // 長押し
+        Serial.print("longPush");
+        Serial.print(ulSWPin);
+        Serial.print(", ");
+        Serial.print(pstParam->xTimeNow);
+        Serial.print(", ");
+        Serial.println(xTimeNow);
+        // 長押し用の要求を通知する
+        uint16_t unReq = pstParam->unLongPushReq;
+        xQueueSendFromISR(*(pstParam->pstLongQue), &unReq, &xHigherPriorityTaskWoken);
+        pstParam->xTimeNow = 0;
+        pstParam->bSWFlag = false;
+      } else if ((xTimeNow - pstParam->xTimeNow) < SW_INVALID_TIME){
+        // 何もしない
+      } else {
+        // 短押し
+        Serial.print("ShortPush");
+        Serial.print(ulSWPin);
+        Serial.print(", ");
+        Serial.print(pstParam->xTimeNow);
+        Serial.print(", ");
+        Serial.println(xTimeNow);
+        // 短押し用の要求を通知する
+        uint16_t unReq = pstParam->unShortPushReq;
+        xQueueSendFromISR(*(pstParam->pstShortQue), &unReq, &xHigherPriorityTaskWoken);
+        pstParam->xTimeNow = 0;
+        pstParam->bSWFlag = false;
+      }
+    }
+  } else {
+    if (pstParam->bSWFlag == false)
+    {
+      // ボタンが押された
+      pstParam->xTimeNow = xTaskGetTickCountFromISR(); 
+      pstParam->bSWFlag = true;
+    }
+  }
+}
+
 
 // 割り込みサービスルーチン
 void IRAM_ATTR SW1Interrupt() {
-  TS_SWParam* pstSWParam = &stSWParam[0];
-  portBASE_TYPE xHigherPriorityTaskWoken; 
-  xHigherPriorityTaskWoken = pdFALSE;
-
-  if (digitalRead(PIN_SW1) == LOW) {
-    // ボタンが離れた
-    TickType_t xTimeNow = xTaskGetTickCount(); 
-    if ((xTimeNow - pstSWParam->xTimeNow) > LONG_PUSH_TIME) {
-      // 長押し
-      // 長押し用の要求を通知する
-      uint16_t unReq = pstSWParam->unLongPushReq;
-      xQueueSendFromISR(*(pstSWParam->pstLongQue), &unReq, &xHigherPriorityTaskWoken);
-    } else if ((xTimeNow - pstSWParam->xTimeNow) < SW_INVALID_TIME){
-      // 何もしない
-    } else {
-      // 短押し
-      // 短押し用の要求を通知する
-      uint16_t unReq = pstSWParam->unShortPushReq;
-      xQueueSendFromISR(*(pstSWParam->pstShortQue), &unReq, &xHigherPriorityTaskWoken);
-    }
-  } else {
-    if (pstSWParam->xTimeNow != 0)
-    {
-      // ボタンが押された
-      pstSWParam->xTimeNow = xTaskGetTickCount(); 
-    }
-  }
+  TS_SWParam* pstParam = &stSWParam[0];
+  SWInteruptProc(pstParam, PIN_SW1);
 }
 // 割り込みサービスルーチン
 void IRAM_ATTR SW2Interrupt() {
-  TS_SWParam* pstSWParam = &stSWParam[1];
-  portBASE_TYPE xHigherPriorityTaskWoken; 
-  xHigherPriorityTaskWoken = pdFALSE;
-
-  if (digitalRead(PIN_SW2) == HIGH) {
-    // ボタンが離れた
-    TickType_t xTimeNow = xTaskGetTickCount(); 
-    if (xTimeNow - pstSWParam->xTimeNow > LONG_PUSH_TIME) {
-      // 長押し
-      // 長押し用の要求を通知する
-      uint16_t unReq = pstSWParam->unLongPushReq;
-      xQueueSendFromISR(*(pstSWParam->pstLongQue), &unReq, &xHigherPriorityTaskWoken);
-    } else if (SW_INVALID_TIME){
-      // 何もしない
-    } else {
-      // 短押し
-      // 短押し用の要求を通知する
-      uint16_t unReq = pstSWParam->unShortPushReq;
-      xQueueSendFromISR(*(pstSWParam->pstShortQue), &unReq, &xHigherPriorityTaskWoken);
-    }
-  } else {
-    if (pstSWParam->xTimeNow != 0)
-    {
-      // ボタンが押された
-      pstSWParam->xTimeNow = xTaskGetTickCount(); 
-    }
-  }
+  TS_SWParam* pstParam = &stSWParam[1];
+  SWInteruptProc(pstParam, PIN_SW2);
 }
 // 割り込みサービスルーチン
 void IRAM_ATTR SW3Interrupt() {
-  TS_SWParam* pstSWParam = &stSWParam[2];
-  portBASE_TYPE xHigherPriorityTaskWoken; 
-  xHigherPriorityTaskWoken = pdFALSE;
-
-  if (digitalRead(PIN_SW3) == LOW) {
-    // ボタンが離れた
-    TickType_t xTimeNow = xTaskGetTickCount(); 
-    if (xTimeNow - pstSWParam->xTimeNow > LONG_PUSH_TIME) {
-      // 長押し
-      // 長押し用の要求を通知する
-      uint16_t unReq = pstSWParam->unLongPushReq;
-      xQueueSendFromISR(*(pstSWParam->pstLongQue), &unReq, &xHigherPriorityTaskWoken);
-    } else if (SW_INVALID_TIME){
-      // 何もしない
-    } else {
-      // 短押し
-      // 短押し用の要求を通知する
-      uint16_t unReq = pstSWParam->unShortPushReq;
-      xQueueSendFromISR(*(pstSWParam->pstShortQue), &unReq, &xHigherPriorityTaskWoken);
-    }
-  } else {
-    if (pstSWParam->xTimeNow != 0)
-    {
-      // ボタンが押された
-      pstSWParam->xTimeNow = xTaskGetTickCount(); 
-    }
-  }
+  TS_SWParam* pstParam = &stSWParam[2];
+  SWInteruptProc(pstParam, PIN_SW3);
 }
 // 割り込みサービスルーチン
 void IRAM_ATTR SW4Interrupt() {
-  TS_SWParam* pstSWParam = &stSWParam[3];
-  portBASE_TYPE xHigherPriorityTaskWoken; 
-  xHigherPriorityTaskWoken = pdFALSE;
-
-  if (digitalRead(PIN_SW4) == LOW) {
-    // ボタンが離れた
-    TickType_t xTimeNow = xTaskGetTickCount(); 
-    if (xTimeNow - pstSWParam->xTimeNow > LONG_PUSH_TIME) {
-      // 長押し
-      // 長押し用の要求を通知する
-      uint16_t unReq = pstSWParam->unLongPushReq;
-      xQueueSendFromISR(*(pstSWParam->pstLongQue), &unReq, &xHigherPriorityTaskWoken);
-    } else if (SW_INVALID_TIME){
-      // 何もしない
-    } else {
-      // 短押し
-      // 短押し用の要求を通知する
-      uint16_t unReq = pstSWParam->unShortPushReq;
-      xQueueSendFromISR(*(pstSWParam->pstShortQue), &unReq, &xHigherPriorityTaskWoken);
-    }
-  } else {
-    if (pstSWParam->xTimeNow != 0)
-    {
-      // ボタンが押された
-      pstSWParam->xTimeNow = xTaskGetTickCount(); 
-    }
-  }
+  TS_SWParam* pstParam = &stSWParam[3];
+  SWInteruptProc(pstParam, PIN_SW4);
 }

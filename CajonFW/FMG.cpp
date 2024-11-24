@@ -120,8 +120,7 @@ void listDir(fs::FS &fs, const char * dirname, uint8_t levels, uint8_t indent) {
     if (!root.isDirectory()) {
         Serial.println("Not a directory");
         return;
-  
-
+    }
     File file = root.openNextFile();
     while (file) {
         for (uint8_t i = 0; i < indent; i++) {

@@ -17,6 +17,7 @@ typedef struct StagSWParam {
   uint16_t unLongPushReq;
   QueueHandle_t* pstLongQue;
   TickType_t xTimeNow; 
+  bool bSWFlag;
 }TS_SWParam;
 
 // 初期化関数
