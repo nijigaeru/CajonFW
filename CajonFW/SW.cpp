@@ -15,6 +15,7 @@
 /******** macro  ***** */
 #define LONG_PUSH_TIME  1000   // 長押し判定時間(msec)
 #define SW_INVALID_TIME 100     // 無効時間(msec)
+// #define SW_DEBUG
 
 /******** global variable  ***** */
 TS_SWParam stSWParam[4] = 
@@ -62,12 +63,14 @@ void SWInteruptProc(TS_SWParam* pstParam, uint32_t ulSWPin)
       TickType_t xTimeNow = xTaskGetTickCountFromISR(); 
       if ((xTimeNow - pstParam->xTimeNow) > LONG_PUSH_TIME) {
         // 長押し
+        #ifdef SW_DEBUG
         Serial.print("longPush");
         Serial.print(ulSWPin);
         Serial.print(", ");
         Serial.print(pstParam->xTimeNow);
         Serial.print(", ");
         Serial.println(xTimeNow);
+        #endif
         // 長押し用の要求を通知する
         uint16_t unReq = pstParam->unLongPushReq;
         xQueueSendFromISR(*(pstParam->pstLongQue), &unReq, &xHigherPriorityTaskWoken);
@@ -77,12 +80,14 @@ void SWInteruptProc(TS_SWParam* pstParam, uint32_t ulSWPin)
         // 何もしない
       } else {
         // 短押し
+        #ifdef SW_DEBUG
         Serial.print("ShortPush");
         Serial.print(ulSWPin);
         Serial.print(", ");
         Serial.print(pstParam->xTimeNow);
         Serial.print(", ");
         Serial.println(xTimeNow);
+        #endif
         // 短押し用の要求を通知する
         uint16_t unReq = pstParam->unShortPushReq;
         xQueueSendFromISR(*(pstParam->pstShortQue), &unReq, &xHigherPriorityTaskWoken);

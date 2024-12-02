@@ -4,10 +4,11 @@
             "name": "Win32",
             "includePath": [
                 "${workspaceFolder}/**",
-                "C:/Users/shimadzu/OneDrive - SHIMADZU/ドキュメント/Arduino/libraries/**",
-                "C:/Users/shimadzu/AppData/Local/Arduino15/packages/m5stack/hardware/esp32/2.1.2/**",
-                "C:/Users/shimadzu/AppData/Local/Arduino15/packages/m5stack/hardware/esp32/2.1.2/**/**",
-                "C:/Users/shimadzu/AppData/Local/Arduino15/packages/m5stack/hardware/esp32/2.1.2/**/**/**"
+                "C:/Users/chack/Documents/Arduino/libraries/**/**",
+                "C:/Users/chack/AppData/Local/Arduino15/packages/m5stack/hardware/esp32/2.1.2/**",
+                "C:/Users/chack/AppData/Local/Arduino15/packages/m5stack/hardware/esp32/2.1.2/**/**",
+                "C:/Users/chack/AppData/Local/Arduino15/packages/m5stack/hardware/esp32/2.1.2/**/**/**",
+                "C:/Users/chack/AppData/Local/Arduino15/packages/m5stack/tools/**"
             ],
             "defines": [
                 "_DEBUG",
