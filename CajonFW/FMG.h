@@ -2,6 +2,8 @@
 #define _FMG_H_
 
 #include <queue.h>
+#include <map>
+#include <vector>
 #include "reqid.h"
 
 // キューの定義
@@ -25,5 +27,7 @@ typedef struct STagFMGRequest {
 }TS_FMGRequest;
 
 extern void FMGTask(void* pvParameters);
+extern std::vector<String> htmlFiles;
+extern std::vector<String> midFiles;
 
 #endif
