@@ -1,27 +1,29 @@
 #include <Arduino.h>
-#include <FreeRTOS.h>
+#include <esp32-hal-gpio.h>
 #include <queue.h>
 #include "SLD.h"
-#include "HwInit/pinasign.h"
+#include "pinasign.h"
 
 // ソレノイド駆動時間（ミリ秒）
-#define SLD_ON_TIME 1000
-#define SLD_NUM 8
-#define PIN_FET(ch) (PIN_FET##ch) 
+#define SLD_ON_TIME 100
 
 // キューの定義
 QueueHandle_t g_pstSLDQueue[SLD_NUM];
-bool g_ulSLDInitFlg[SLDNUM] = flase;
-
+bool g_ulSLDInitFlg[SLD_NUM] = {false};
+uint8_t fetPins[] = { PIN_FET1, PIN_FET2, PIN_FET3, PIN_FET4, PIN_FET5, PIN_FET6, PIN_FET7, PIN_FET8 };
+uint32_t g_ulFetCount = 1;
 
 // ソレノイド駆動タスク
 void SLDTask(void* pvParameters) {
-  uint8_t ucFetCh = *(uint8_t*)pvParameters;
-  uint8_t ucSLDPin = PIN_FET(ucFetCh);
+  //uint8_t ucFetCh = *(uint8_t*)pvParameters;
+  uint8_t ucFetCh = g_ulFetCount ;
+  g_ulFetCount ++;
+  uint8_t ucSLDPin = fetPins[ucFetCh-1];
 
   if (g_ulSLDInitFlg[ucFetCh-1])
   {
-    Serial.println("SLD already initialized.");
+    Serial.print("SLD already initialized.");
+    Serial.println(ucFetCh);
     return;
   }
 
@@ -30,19 +32,21 @@ void SLDTask(void* pvParameters) {
   digitalWrite(ucSLDPin, LOW);
 
   // キューの作成
-  g_pstSLDQueue[ucFetCh-1] = xQueueCreate(10, sizeof(SLDRequest));
+  g_pstSLDQueue[ucFetCh-1] = xQueueCreate(10, sizeof(TS_SLDRequest));
   if (g_pstSLDQueue[ucFetCh-1] == NULL) {
     Serial.println("Failed to create queue.");
     return;
   }
 
   // 初期化完了フラグ
-  g_ulSLDInitFlg[ucFetCh-1] = true:
+  g_ulSLDInitFlg[ucFetCh-1] = true;
+  Serial.print("SLD initialized.");
+  Serial.println(ucFetCh);
 
   while (true) {
-    SLDRequest request;
+    TS_SLDRequest request;
     if (xQueueReceive(g_pstSLDQueue[ucFetCh-1], &request, portMAX_DELAY) == pdPASS) {
-      if (request.type == SLD_TURN_ONs) {
+      if (request.unReqType == SLD_TURN_ON) {
         // SLDをONにする
         digitalWrite(ucSLDPin, HIGH);
         Serial.print("SLD on pin ");

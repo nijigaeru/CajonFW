@@ -1,5 +1,3 @@
-
-
 #ifndef _PINASIGN_H_
 #define _PINASIGN_H_
 

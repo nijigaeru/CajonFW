@@ -4,10 +4,11 @@
             "name": "Win32",
             "includePath": [
                 "${workspaceFolder}/**",
-                "C:/Users/chack/AppData/Local/Arduino15/packages/esp32/tools/esp32-arduino-libs/idf-release_v5.1-33fbade6/esp32s3/include/freertos/FreeRTOS-Kernel/include/freertos/**",
-                "C:/Users/chack/AppData/Local/Arduino15/libraries/**",
-                "C:/Users/chack/AppData/Local/Arduino15/packages/esp32/tools/esp32-arduino-libs/idf-release_v5.1-33fbade6/esp32s3/**"
-                
+                "C:/Users/chack/Documents/Arduino/libraries/**/**",
+                "C:/Users/chack/AppData/Local/Arduino15/packages/m5stack/hardware/esp32/2.1.2/**",
+                "C:/Users/chack/AppData/Local/Arduino15/packages/m5stack/hardware/esp32/2.1.2/**/**",
+                "C:/Users/chack/AppData/Local/Arduino15/packages/m5stack/hardware/esp32/2.1.2/**/**/**",
+                "C:/Users/chack/AppData/Local/Arduino15/packages/m5stack/tools/**"
             ],
             "defines": [
                 "_DEBUG",

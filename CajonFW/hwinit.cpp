@@ -1,4 +1,5 @@
 
+#include <esp32-hal-gpio.h>
 #include "pinasign.h"
 #include "hwinit.h"
 
