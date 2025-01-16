@@ -64,7 +64,7 @@ void FMGTask(void* pvParameters) {
     // SDカードの挿入を通知する
     pstSendReq->unReqType = FMG_SD_SET;
     pstSendReq->ulSize = 0;
-    xQueueSend(g_pstFMGQueue, pstRecvReq, 100);
+    xQueueSend(g_pstFMGQueue, pstSendReq, 100);
   } 
 
   while (true) {
@@ -102,8 +102,9 @@ void FMGTask(void* pvParameters) {
           midFiles.clear();
           break;
         case FMG_OPEN: 
-          TS_FMGOpenParam pstOpen = pstRecvReq->ucParam;
-          g_file = SD.open(pstOpen.ucFileName, O_READ);
+        {
+          TS_FMGOpenParam* pstOpen = (TS_FMGOpenParam*)pstRecvReq->ucParam;
+          g_file = SD.open(pstOpen->ucFileName, O_READ);
           if (g_file) {
             pstSendReq->unReqType = FMG_OPEN_ANS;
             pstSendReq->unError = 0;
@@ -115,10 +116,12 @@ void FMGTask(void* pvParameters) {
             xQueueSend(pstRecvReq->pstAnsQue, pstSendReq, 100);
           }
           break;
+        }
         case FMG_READ:
-          TS_FMGReadParam pstRead = pstRecvReq->ucParam;
+        {
+          TS_FMGReadParam* pstRead = (TS_FMGReadParam*)pstRecvReq->ucParam;
           if (g_file) {
-            size_t bytesRead = g_file.read(stRequest.pucBuffer, stRequest.ulLength);
+            size_t bytesRead = g_file.read(pstRead->pucBuffer, pstRead->ulLength);
             Serial.print("Read ");
             Serial.print(bytesRead);
             Serial.println(" bytes from file.");
@@ -134,17 +137,19 @@ void FMGTask(void* pvParameters) {
             xQueueSend(pstRecvReq->pstAnsQue, pstSendReq, 100);
           }
           break;
-        case FMG_CLOSE: 
+        }
+        case FMG_CLOSE:
+        {
           if (g_file) {
             g_file.close();
-            g_file = NULL;
             Serial.print("Close ");
           }
           pstSendReq->unReqType = FMG_CLOSE_ANS;
           pstSendReq->unError = (0);
           xQueueSend(pstRecvReq->pstAnsQue, pstSendReq, 100);
           break;
-        default
+        }
+        default:
           break;
       }
     }

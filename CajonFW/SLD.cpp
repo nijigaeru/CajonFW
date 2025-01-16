@@ -51,14 +51,15 @@ void SLDTask(void* pvParameters) {
   while (true) {
     uint8_t ucRecvReq[REQ_QUE_SIZE];
     TS_Req* pstRecvReq = (TS_Req*)ucRecvReq;
-    if (xQueueReceive( pstRecvReq, portMAX_DELAY) == pdPASS) {
-      if (request.unReqType == SLD_TURN_ON) {
+    if (xQueueReceive(g_pstSLDQueue[ucFetCh-1], pstRecvReq, portMAX_DELAY) == pdPASS) {
+      if (pstRecvReq->unReqType == SLD_TURN_ON) {
         // SLDをONにする
-        ledcWrite(ucFetCh,request.ucPower);
+        TS_SLDOnParam* pstSLDOnParam = (TS_SLDOnParam*)pstRecvReq->ucParam;
+        ledcWrite(ucFetCh,pstSLDOnParam->ucPower);
         Serial.print("SLD(");
         Serial.print(ucFetCh);
         Serial.print("),power(");
-        Serial.print(request.ucPower);
+        Serial.print(pstSLDOnParam->ucPower);
         Serial.println(") turned ON.");
         // 一定時間待つ
         vTaskDelay(pdMS_TO_TICKS(SLD_ON_TIME));

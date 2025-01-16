@@ -15,9 +15,9 @@ enum READMIDRequestType {
 };
 
 // 要求の構造体
-typedef struct STagREADMIDStartRequest {
+typedef struct STagREADMIDStartParam {
   char ucFileName[32];
-}TS_READMIDStartRequest;
+}TS_READMIDStartParam;
 
 extern void READMIDTask(void* pvParameters);
 

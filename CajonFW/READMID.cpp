@@ -30,28 +30,38 @@ void READMIDTask(void* pvParameters) {
     uint8_t ucSendReq[REQ_QUE_SIZE];
     TS_Req* pstSendReq = (TS_Req*)ucSendReq;
     if (xQueueReceive(g_pstREADMIDQueue, pstRecvReq, portMAX_DELAY) == pdPASS) {
-        switch (pstRecvReq->unReqType)
+      switch (pstRecvReq->unReqType)
+      {
+        case READMID_START:/* 再生開始 */
         {
-            case READMID_START/* 再生開始 */:
-              TS_READMIDStartRequest *pstStart = pstRecvReq->ucParam;
-              TS_FMGOpenParam* pstOpen = pstSendReq->ucParam;
-              pstSendReq->unReqType = FMG_OPEN;
-              pstSendReq->pstAnsQue = g_pstREADMIDQueue;
-              pstSendReq->ulSize = sizeof(TS_FMGOpenParam);
-              memcpy(pstOpen->ucFileName, pstStart->ucFileName, sizeof(pstStart->ucFileName));
-              xQueueSend(g_pstFMGQueue, pstSendReq, 100);
-              break;
-            case FMG_OPEN_ANS/* オープン完了 */
-              if(pstRecvReq->unError == 0)
-              {
-                TS_FMGReadParam* pstRead = pstRecvReq->ucParam;
-                pstSendReq->unReqType = FMG_READ;
-                pstSendReq->pstAnsQue = g_pstREADMIDQueue;
-                pstSendReq->ulSize = sizeof(TS_FMGReadParam);
-                pstRead->pucBuffer = g_ucBuffer;
-                pstRead->ulSize = BUFSIZE;
-                xQueueSend(g_pstFMGQueue, pstSendReq, 100);
-              }
+          TS_READMIDStartParam *pstStart = (TS_READMIDStartParam *)pstRecvReq->ucParam;
+          TS_FMGOpenParam* pstOpen = (TS_FMGOpenParam*)pstSendReq->ucParam;
+          pstSendReq->unReqType = FMG_OPEN;
+          pstSendReq->pstAnsQue = g_pstREADMIDQueue;
+          pstSendReq->ulSize = sizeof(TS_FMGOpenParam);
+          memcpy(pstOpen->ucFileName, pstStart->ucFileName, sizeof(pstStart->ucFileName));
+          xQueueSend(g_pstFMGQueue, pstSendReq, 100);
+          break;
         }
+        case FMG_OPEN_ANS:/* オープン完了 */
+        {
+          if(pstRecvReq->unError == 0)
+          {
+            TS_FMGReadParam* pstRead = (TS_FMGReadParam*)pstRecvReq->ucParam;
+            pstSendReq->unReqType = FMG_READ;
+            pstSendReq->pstAnsQue = g_pstREADMIDQueue;
+            pstSendReq->ulSize = sizeof(TS_FMGReadParam);
+            pstRead->pucBuffer = g_ucBuffer;
+            pstRead->ulLength = BUFSIZE;
+            xQueueSend(g_pstFMGQueue, pstSendReq, 100);
+          }
+          break;
+        }
+        default:
+        {
+          break;
+        }
+      }
+    }
   }
 }
