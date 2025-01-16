@@ -76,7 +76,7 @@ void SWInteruptProc(TS_SWParam* pstParam, uint32_t ulSWPin, uint32_t ulCh)
         #endif
         // 長押し用の要求を通知する
         pstSendReq->unReqType = pstParam->unLongPushReq;
-        TS_SLDOnParam pstSLDParam = pstSendReq->ucParam;
+        TS_SLDOnParam* pstSLDParam = (TS_SLDOnParam*)pstSendReq->ucParam;
         pstSLDParam->ucPower = 255;
         xQueueSendFromISR(*(pstParam->pstLongQue), pstSendReq, &xHigherPriorityTaskWoken);
         pstParam->xTimeNow = 0;
@@ -95,7 +95,7 @@ void SWInteruptProc(TS_SWParam* pstParam, uint32_t ulSWPin, uint32_t ulCh)
         #endif
         // 短押し用の要求を通知する
         pstSendReq->unReqType = pstParam->unShortPushReq;
-        TS_SLDOnParam pstSLDParam = pstSendReq->ucParam;
+        TS_SLDOnParam* pstSLDParam = (TS_SLDOnParam*)pstSendReq->ucParam;
         pstSLDParam->ucPower = 255;
         xQueueSendFromISR(*(pstParam->pstShortQue), pstSendReq, &xHigherPriorityTaskWoken);
         pstParam->xTimeNow = 0;

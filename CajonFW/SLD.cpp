@@ -49,8 +49,8 @@ void SLDTask(void* pvParameters) {
   Serial.print("SLD initialized.");
   Serial.println(ucFetCh);
   while (true) {
-    uint8_t ucReq[REQ_QUE_SIZE];
-    TS_Req* pstRecvReq = ucReq;
+    uint8_t ucRecvReq[REQ_QUE_SIZE];
+    TS_Req* pstRecvReq = (TS_Req*)ucRecvReq;
     if (xQueueReceive( pstRecvReq, portMAX_DELAY) == pdPASS) {
       if (request.unReqType == SLD_TURN_ON) {
         // SLDをONにする

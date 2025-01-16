@@ -146,7 +146,6 @@ void FMGTask(void* pvParameters) {
           break;
         default
           break;
-        }
       }
     }
   }
