@@ -256,3 +256,167 @@ void setup() {
 void loop() {
   // メインループは空
 }
+
+
+#include <SD.h>
+#include <SPI.h>
+
+#define SD_CS_PIN 10
+
+#define MAX_TRACKS 16
+#define MAX_EVENTS 1000
+
+struct MIDIHeader {
+  char chunkType[4];
+  uint32_t chunkSize;
+  uint16_t formatType;
+  uint16_t numberOfTracks;
+  uint16_t timeDivision;
+};
+
+struct MIDITrack {
+  char chunkType[4];
+  uint32_t chunkSize;
+};
+
+struct MIDIEvent {
+  uint32_t deltaTime;
+  uint8_t eventType;
+  uint8_t channel;
+  uint8_t param1;
+  uint8_t param2;
+};
+
+char sequenceName[256];
+char trackNames[MAX_TRACKS][256];
+float tempo = 120.0;  // デフォルトのテンポ（BPM）
+bool fet1NoteOn[MAX_EVENTS] = {0};  // 「FET1」のON/OFFイベント
+
+void parseMIDIFile(const char* filename);
+uint32_t readVariableLengthValue(File& file);
+void readMetaEvent(File& file, uint8_t type, uint32_t length);
+
+void setup() {
+  Serial.begin(9600);
+  if (!SD.begin(SD_CS_PIN)) {
+    Serial.println("SD card initialization failed!");
+    return;
+  }
+  parseMIDIFile("example.mid");
+}
+
+void loop() {
+  // メインループは空のまま
+}
+
+void parseMIDIFile(const char* filename) {
+  File file = SD.open(filename);
+  if (!file) {
+    Serial.println("Failed to open file");
+    return;
+  }
+
+  MIDIHeader header;
+  file.read((uint8_t*)&header, sizeof(MIDIHeader));
+  Serial.print("Format Type: ");
+  Serial.println(header.formatType);
+  Serial.print("Number of Tracks: ");
+  Serial.println(header.numberOfTracks);
+  Serial.print("Time Division: ");
+  Serial.println(header.timeDivision);
+
+  for (int i = 0; i < header.numberOfTracks; i++) {
+    MIDITrack track;
+    file.read((uint8_t*)&track, sizeof(MIDITrack));
+    Serial.print("Track ");
+    Serial.print(i);
+    Serial.print(" Chunk Size: ");
+    Serial.println(track.chunkSize);
+
+    uint32_t bytesRead = 0;
+    while (bytesRead < track.chunkSize) {
+      MIDIEvent event;
+      event.deltaTime = readVariableLengthValue(file);
+      file.read(&event.eventType, 1);
+      
+      if ((event.eventType & 0xF0) == 0xF0) {  // Meta Event or Sysex Event
+        if (event.eventType == 0xFF) {  // Meta Event
+          uint8_t metaType;
+          file.read(&metaType, 1);
+          uint32_t length = readVariableLengthValue(file);
+          readMetaEvent(file, metaType, length);
+          bytesRead += 2 + length;
+        } else {  // Skip Sysex Event
+          uint32_t length = readVariableLengthValue(file);
+          file.seek(file.position() + length);
+          bytesRead += 1 + length;
+        }
+      } else {
+        event.channel = event.eventType & 0x0F;
+        event.eventType = event.eventType & 0xF0;
+        if (event.eventType == 0x90 || event.eventType == 0x80) {
+          file.read(&event.param1, 1);
+          file.read(&event.param2, 1);
+          bytesRead += 3;
+          if (event.eventType == 0x90 && event.param1 == 60) {  // ノート番号 60（C4）
+            fet1NoteOn[event.deltaTime] = event.param2 > 0;
+          }
+        } else {
+          file.read(&event.param1, 1);
+          bytesRead += 2;
+        }
+      }
+    }
+  }
+
+  Serial.print("Sequence Name: ");
+  Serial.println(sequenceName);
+  Serial.print("Tempo: ");
+  Serial.println(tempo);
+  for (int i = 0; i < header.numberOfTracks; i++) {
+    Serial.print("Track ");
+    Serial.print(i);
+    Serial.print(" Name: ");
+    Serial.println(trackNames[i]);
+  }
+
+  file.close();
+}
+
+uint32_t readVariableLengthValue(File& file) {
+  uint32_t value = 0;
+  uint8_t byte;
+  do {
+    file.read(&byte, 1);
+    value = (value << 7) | (byte & 0x7F);
+  } while (byte & 0x80);
+  return value;
+}
+
+void readMetaEvent(File& file, uint8_t type, uint32_t length) {
+  switch (type) {
+    case 0x03:  // シーケンス名/トラック名
+      file.read((uint8_t*)sequenceName, length);
+      sequenceName[length] = '\0';
+      Serial.print("Sequence/Track Name: ");
+      Serial.println(sequenceName);
+      break;
+    case 0x51:  // Set Tempo
+      uint32_t microsecondsPerQuarterNote;
+      file.read((uint8_t*)&microsecondsPerQuarterNote, 3);
+      tempo = 60000000.0 / (microsecondsPerQuarterNote >> 8); // テンポ(BPM)
+      Serial.print("Tempo: ");
+      Serial.println(tempo);
+      break;
+    case 0x04:  // Instrument Name
+      char instrumentName[256];
+      file.read((uint8_t*)instrumentName, length);
+      instrumentName[length] = '\0';
+      Serial.print("Instrument Name: ");
+      Serial.println(instrumentName);
+      break;
+    default:
+      file.seek(file.position() + length);
+      break;
+  }
+}

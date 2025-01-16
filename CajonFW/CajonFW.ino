@@ -51,7 +51,7 @@ void setup() {
   xTaskCreatePinnedToCore(FMGTask, "FMGTask", 2048, NULL, 1, NULL, 0);
   for (uint8_t ucFetCh = 1; ucFetCh <= 8; ucFetCh++) {
     // SLD制御タスクの作成
-    xTaskCreatePinnedToCore(SLDTask, "SLDTask", 1024, NULL, 1, NULL, 0);
+    xTaskCreatePinnedToCore(SLDTask, "SLDTask", 2048, NULL, 1, NULL, 0);
   }
   SWInit();
 
