@@ -47,7 +47,7 @@ void READMIDTask(void* pvParameters) {
         {
           if(pstRecvReq->unError == 0)
           {
-            TS_FMGReadParam* pstRead = (TS_FMGReadParam*)pstRecvReq->ucParam;
+            TS_FMGReadParam* pstRead = (TS_FMGReadParam*)pstSendReq->ucParam;
             pstSendReq->unReqType = FMG_READ;
             pstSendReq->pstAnsQue = g_pstREADMIDQueue;
             pstSendReq->ulSize = sizeof(TS_FMGReadParam);
