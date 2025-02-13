@@ -31,7 +31,7 @@ SdFat SD;
 // キューの定義
 QueueHandle_t g_pstFMGQueue;
 bool g_ulSDSetFlag = false;
-
+FsFile g_file;
 std::vector<String> htmlFiles;
 std::vector<String> midFiles;
 
@@ -51,24 +51,29 @@ void FMGTask(void* pvParameters) {
   SPI.begin(PIN_SD_CLK,PIN_SD_D0,PIN_SD_CMD,PIN_SD_D3);
 
   // キューの作成
-  g_pstFMGQueue = xQueueCreate(10, sizeof(TS_FMGRequest));
+  g_pstFMGQueue = xQueueCreate(REQ_QUE_NUM, REQ_QUE_SIZE);
   if (g_pstFMGQueue == NULL) {
     Serial.println("Failed to create queue.");
     return;
   }
   if (digitalRead(PIN_SD_DET) == LOW) {
     // SDカードが挿入されている場合
-    TS_FMGRequest stRequest;
+    uint8_t ucSendReq[REQ_QUE_SIZE];
+    TS_Req* pstSendReq = (TS_Req*)ucSendReq;
     g_ulSDSetFlag = true;
     // SDカードの挿入を通知する
-    stRequest = { FMG_SD_SET,0,NULL,0 };
-    xQueueSend(g_pstFMGQueue, &stRequest, 100);
+    pstSendReq->unReqType = FMG_SD_SET;
+    pstSendReq->ulSize = 0;
+    xQueueSend(g_pstFMGQueue, pstSendReq, 100);
   } 
 
   while (true) {
-    TS_FMGRequest stRequest;
-    if (xQueueReceive(g_pstFMGQueue, &stRequest, portMAX_DELAY) == pdPASS) {
-      switch (stRequest.unReqType) {
+    uint8_t ucRecvReq[REQ_QUE_SIZE];
+    TS_Req* pstRecvReq = (TS_Req*)ucRecvReq;
+    uint8_t ucSendReq[REQ_QUE_SIZE];
+    TS_Req* pstSendReq = (TS_Req*)ucSendReq;
+    if (xQueueReceive(g_pstFMGQueue, pstRecvReq, portMAX_DELAY) == pdPASS) {
+      switch (pstRecvReq->unReqType) {
         case FMG_SD_SET:
           Serial.println("SD card inserted.");
           // SDカードの初期化
@@ -96,19 +101,56 @@ void FMGTask(void* pvParameters) {
           htmlFiles.clear();
           midFiles.clear();
           break;
-        case FMG_READ: {
-          FsFile file = SD.open(stRequest.ucFileName, O_READ);
-          if (file) {
-            size_t bytesRead = file.read(stRequest.pucBuffer, stRequest.ulLength);
-            Serial.print("Read ");
-            Serial.print(bytesRead);
-            Serial.println(" bytes from file.");
-            file.close();
+        case FMG_OPEN: 
+        {
+          TS_FMGOpenParam* pstOpen = (TS_FMGOpenParam*)pstRecvReq->ucParam;
+          g_file = SD.open(pstOpen->ucFileName, O_READ);
+          if (g_file) {
+            pstSendReq->unReqType = FMG_OPEN_ANS;
+            pstSendReq->unError = 0;
+            xQueueSend(pstRecvReq->pstAnsQue, pstSendReq, 100);
           } else {
             Serial.println("Failed to open file for reading.");
+            pstSendReq->unReqType = FMG_OPEN_ANS;
+            pstSendReq->unError = (0xFFFF);
+            xQueueSend(pstRecvReq->pstAnsQue, pstSendReq, 100);
           }
           break;
         }
+        case FMG_READ:
+        {
+          TS_FMGReadParam* pstRead = (TS_FMGReadParam*)pstRecvReq->ucParam;
+          if (g_file) {
+            size_t bytesRead = g_file.read(pstRead->pucBuffer, pstRead->ulLength);
+            Serial.print("Read ");
+            Serial.print(bytesRead);
+            Serial.println(" bytes from file.");
+            pstSendReq->unReqType = FMG_READ_ANS;
+            pstSendReq->unError = 0;
+            TS_FMGReadAns* pstReadAns  = ((TS_FMGReadAns*)pstSendReq->ucParam);
+            pstReadAns->ulLength = bytesRead;
+            xQueueSend(pstRecvReq->pstAnsQue, pstSendReq, 100);
+          } else {
+            Serial.println("Failed to open file for reading.");
+            pstSendReq->unReqType = FMG_READ_ANS;
+            pstSendReq->unError = (0xFFFF);
+            xQueueSend(pstRecvReq->pstAnsQue, pstSendReq, 100);
+          }
+          break;
+        }
+        case FMG_CLOSE:
+        {
+          if (g_file) {
+            g_file.close();
+            Serial.print("Close ");
+          }
+          pstSendReq->unReqType = FMG_CLOSE_ANS;
+          pstSendReq->unError = (0);
+          xQueueSend(pstRecvReq->pstAnsQue, pstSendReq, 100);
+          break;
+        }
+        default:
+          break;
       }
     }
   }
@@ -117,21 +159,24 @@ void FMGTask(void* pvParameters) {
 // 割り込みサービスルーチン
 void IRAM_ATTR SDDetInterrupt() {
   BaseType_t xHigherPriorityTaskWoken = pdFALSE;
-  TS_FMGRequest stRequest;
+  uint8_t ucSendReq[REQ_QUE_SIZE];
+  TS_Req* pstSendReq = (TS_Req*)ucSendReq;
   if (digitalRead(PIN_SD_DET) == LOW) {
     // SDカードが挿入された
     if (g_ulSDSetFlag == false) {
       g_ulSDSetFlag = true;
       // SDカードの挿入を通知する
-      stRequest = { FMG_SD_SET,0,NULL,0 };
-      xQueueSendFromISR(g_pstFMGQueue, &stRequest, &xHigherPriorityTaskWoken);
+      pstSendReq->unReqType = FMG_SD_SET;
+      pstSendReq->ulSize = 0;
+      xQueueSendFromISR(g_pstFMGQueue, pstSendReq, &xHigherPriorityTaskWoken);
     }
   } else {
     // SDカードが抜かれた
     g_ulSDSetFlag = false;
     // SDカードの抜かれたことを通知する
-    stRequest = { FMG_SD_CLR,0,NULL,0 };
-    xQueueSendFromISR(g_pstFMGQueue, &stRequest, &xHigherPriorityTaskWoken);
+    pstSendReq->unReqType = FMG_SD_CLR;
+    pstSendReq->ulSize = 0;
+    xQueueSendFromISR(g_pstFMGQueue, pstSendReq, &xHigherPriorityTaskWoken);
   }
 }
 

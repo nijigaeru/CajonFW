@@ -8,6 +8,8 @@
         "string_view": "cpp",
         "initializer_list": "cpp",
         "*.tcc": "cpp",
-        "fstream": "cpp"
+        "fstream": "cpp",
+        "list": "cpp",
+        "unordered_set": "cpp"
     }
 }
