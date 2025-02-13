@@ -11,6 +11,7 @@
 #include "SW.h"
 #include "FMG.h"
 #include "SLD.h"
+#include "REQ.h"
 
 /******** macro  ***** */
 #define LONG_PUSH_TIME  1000   // 長押し判定時間(msec)
@@ -52,10 +53,12 @@ void SWInit(void) {
 
 }
 
-void SWInteruptProc(TS_SWParam* pstParam, uint32_t ulSWPin)
+void SWInteruptProc(TS_SWParam* pstParam, uint32_t ulSWPin, uint32_t ulCh)
 {
   portBASE_TYPE xHigherPriorityTaskWoken; 
   xHigherPriorityTaskWoken = pdFALSE;
+  uint8_t ucSendReq[REQ_QUE_SIZE];
+  TS_Req* pstSendReq = (TS_Req*)ucSendReq;
   if (digitalRead(ulSWPin) == HIGH) {
     // ボタンが離れた
     if(pstParam->bSWFlag == true)
@@ -72,8 +75,10 @@ void SWInteruptProc(TS_SWParam* pstParam, uint32_t ulSWPin)
         Serial.println(xTimeNow);
         #endif
         // 長押し用の要求を通知する
-        uint16_t unReq = pstParam->unLongPushReq;
-        xQueueSendFromISR(*(pstParam->pstLongQue), &unReq, &xHigherPriorityTaskWoken);
+        pstSendReq->unReqType = pstParam->unLongPushReq;
+        TS_SLDOnParam* pstSLDParam = (TS_SLDOnParam*)pstSendReq->ucParam;
+        pstSLDParam->ucPower = 255;
+        xQueueSendFromISR(*(pstParam->pstLongQue), pstSendReq, &xHigherPriorityTaskWoken);
         pstParam->xTimeNow = 0;
         pstParam->bSWFlag = false;
       } else if ((xTimeNow - pstParam->xTimeNow) < SW_INVALID_TIME){
@@ -89,8 +94,10 @@ void SWInteruptProc(TS_SWParam* pstParam, uint32_t ulSWPin)
         Serial.println(xTimeNow);
         #endif
         // 短押し用の要求を通知する
-        uint16_t unReq = pstParam->unShortPushReq;
-        xQueueSendFromISR(*(pstParam->pstShortQue), &unReq, &xHigherPriorityTaskWoken);
+        pstSendReq->unReqType = pstParam->unShortPushReq;
+        TS_SLDOnParam* pstSLDParam = (TS_SLDOnParam*)pstSendReq->ucParam;
+        pstSLDParam->ucPower = 255;
+        xQueueSendFromISR(*(pstParam->pstShortQue), pstSendReq, &xHigherPriorityTaskWoken);
         pstParam->xTimeNow = 0;
         pstParam->bSWFlag = false;
       }
@@ -109,20 +116,20 @@ void SWInteruptProc(TS_SWParam* pstParam, uint32_t ulSWPin)
 // 割り込みサービスルーチン
 void IRAM_ATTR SW1Interrupt() {
   TS_SWParam* pstParam = &stSWParam[0];
-  SWInteruptProc(pstParam, PIN_SW1);
+  SWInteruptProc(pstParam, PIN_SW1, 1);
 }
 // 割り込みサービスルーチン
 void IRAM_ATTR SW2Interrupt() {
   TS_SWParam* pstParam = &stSWParam[1];
-  SWInteruptProc(pstParam, PIN_SW2);
+  SWInteruptProc(pstParam, PIN_SW2, 2);
 }
 // 割り込みサービスルーチン
 void IRAM_ATTR SW3Interrupt() {
   TS_SWParam* pstParam = &stSWParam[2];
-  SWInteruptProc(pstParam, PIN_SW3);
+  SWInteruptProc(pstParam, PIN_SW3, 3);
 }
 // 割り込みサービスルーチン
 void IRAM_ATTR SW4Interrupt() {
   TS_SWParam* pstParam = &stSWParam[3];
-  SWInteruptProc(pstParam, PIN_SW4);
+  SWInteruptProc(pstParam, PIN_SW4, 4);
 }
