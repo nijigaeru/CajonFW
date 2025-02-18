@@ -4,7 +4,7 @@
 #include <queue.h>
 #include <map>
 #include <vector>
-#include "reqid.h"
+#include "REQ.h"
 
 // キューの定義
 extern QueueHandle_t g_pstFMGQueue;
@@ -14,17 +14,28 @@ enum FMGRequestType {
   FMG_SD_SET = FMG_REQ_BEGIN,
   FMG_SD_CLR,
   FMG_GET_SND_LIST,
-  FMG_READ
+  FMG_OPEN,
+  FMG_OPEN_ANS,
+  FMG_READ,
+  FMG_READ_ANS,
+  FMG_CLOSE,
+  FMG_CLOSE_ANS,
 };
 
 // 要求の構造体
-typedef struct STagFMGRequest {
-  uint16_t unReqType;
-  uint16_t unReserve;
+
+typedef struct STagFMGOpenParam {
   char ucFileName[32];
+}TS_FMGOpenParam;
+
+typedef struct STagFMGReadParam {
   uint8_t* pucBuffer;
   uint32_t ulLength;
-}TS_FMGRequest;
+}TS_FMGReadParam;
+
+typedef struct STagFMGReadAns {
+  uint32_t ulLength;
+}TS_FMGReadAns;
 
 extern void FMGTask(void* pvParameters);
 extern std::vector<String> htmlFiles;

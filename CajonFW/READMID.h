@@ -12,8 +12,6 @@ extern QueueHandle_t g_pstREADMIDQueue;
 // 要求の種類
 enum READMIDRequestType {
   READMID_START  = READMID_REQ_BEGIN, // 動作開始要求
-  FMG_OPEN_ANS                      , // ファイルオープン完了通知
-  FMG_READ_ANS                      , // データリード完了通知
   READMID_PAUSE                     , // 一時停止
   READMID_RESTART                   , // 再開
   // READMID_RETURN ,                 // 巻き戻し 
@@ -23,7 +21,7 @@ enum READMIDRequestType {
 
 // taskのステート
 enum READMIDState {
-  ST_IDLE = READMID_ST_BEGIN        , // 起動時, 待機時ステート
+  ST_IDLE = 0                       , // 起動時, 待機時ステート
   ST_WAIT_OPEN                      , // ファイルオープン要求応答待ち
   ST_WAIT_READ                      , // 初回データリード要求応答待ち
   ST_READ_HEADER_HEADER             , // ヘッダチャンク読み出し先頭 4B

@@ -2,7 +2,7 @@
 #define _SLD_H_
 
 #include <queue.h>
-#include "reqid.h"
+#include "REQ.h"
 
 #define SLD_NUM 8
 
@@ -17,9 +17,8 @@ enum SLDRequestType {
 
 // 要求の構造体
 typedef struct StagFETRequest {
-  uint16_t unReqType;
-  uint16_t unReserve;
-}TS_SLDRequest;
+  uint8_t  ucPower;
+}TS_SLDOnParam;
 
 // 初期化関数
 extern void SLDTask(void* pvParameters);
