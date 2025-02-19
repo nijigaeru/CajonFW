@@ -52,20 +52,20 @@ typedef struct STagREADMIDStartParam {
 
 // タスク内データ構造体
 typedef struct STagREADMIDTaskParam {
-  uint32_t  ucNumBuf;         // 現在のバッファ位置
+  uint32_t  ulNumBuf;         // 現在のバッファ位置
   uint8_t   ucState;          // 現在のステート
   uint8_t   ucStatePause;     // ポーズ時のステート保持. 再開時に遷移する. 
-  uint32_t  ucBufHold;        // 残データ格納用変数
+  uint32_t  ulBufHold;        // 残データ格納用変数
   uint8_t   ucCntBufHold;     // 格納された残データ数カウント
-  uint32_t  ucCntStartTrack;  // トラックチャンク開始位置(巻き戻し時に使う)
-  uint32_t  ucCntDataRead;    // 現在までの合計リードデータ数
+  uint32_t  ulCntStartTrack;  // トラックチャンク開始位置(巻き戻し時に使う)
+  uint32_t  ulCntDataRead;    // 現在までの合計リードデータ数
   uint8_t   ucCntReadFMG;     // FMGへのリード要求数
-  uint32_t  ucCheckBuf;       // リード結果データ(上限4B)
+  uint32_t  ulCheckBuf;       // リード結果データ(上限4B)
 }TS_READMIDSTaskParam;
 
 // 先頭データリード関数
-uint8_t ReadDataProc (TS_READMIDSTaskParam* pstTaskParam, uint8_t ucByteNum);
+uint32_t ReadDataProc (TS_READMIDSTaskParam* pstTaskParam, uint8_t ucByteNum);
 void ResetStructProc ( TS_READMIDSTaskParam* pstTaskParam );
-extern void READMIDTask(void* pvParameters);
+extern void READMIDTask(void* pvParameters );
 
 #endif
