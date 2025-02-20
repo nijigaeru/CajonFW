@@ -8,10 +8,10 @@
 ## ボードマネージャ
 
 - 下記をインストール
-   - esp32 by Espressif Systems
-- "M5StampS3" を選択
+   - esp32 by Espressif Systems : 2.0.17
+- "STAMP-S3" を選択
 
 ## ライブラリ
 
 - 下記をインストール
-   - SdFat by Bill Greiman
+   - SdFat by Bill Greiman : 2.3.0
