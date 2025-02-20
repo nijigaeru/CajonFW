@@ -10,10 +10,11 @@ const char* password = "tobukaeru_Cajon"; // アクセスポイントのパス�
 
 // キューの定義
 QueueHandle_t g_pstHTTPQueue;
-AsyncWebServer server(80);
+WebServer server(80);
 
 /******** function declaration ***** */
 void HTTPTask(void* pvParameters);   //HTTPタスク
+bool bWifiConncet = false;
 
 /************************** */
 // HTTPタスク
@@ -72,4 +73,16 @@ void HTTTPTask(void* pvParameters){
   });
 
   server.begin();
+  
+  while(1)
+  {
+    if ((WiFi.status() == WL_CONNECTED) && ( !bWifiConncet ))
+    {
+        
+    }
+    else if ((WiFi.status() != WL_CONNECTED) && ( bWifiConncet ))
+    {
+        
+    }
+  }
 }

@@ -14,17 +14,17 @@
 #include "REQ.h"
 
 /******** macro  ***** */
-#define LONG_PUSH_TIME  1000   // 長押し判定時間(msec)
+#define LONG_PUSH_TIME  10000   // 長押し判定時間(msec)
 #define SW_INVALID_TIME 100     // 無効時間(msec)
-// #define SW_DEBUG
+#define SW_DEBUG
 
 /******** global variable  ***** */
 TS_SWParam stSWParam[4] = 
 {
-  {SLD_TURN_ON, &g_pstSLDQueue[0], SLD_TURN_ON, &g_pstSLDQueue[4], 0, false},
-  {SLD_TURN_ON, &g_pstSLDQueue[1], SLD_TURN_ON, &g_pstSLDQueue[5], 0, false},
-  {SLD_TURN_ON, &g_pstSLDQueue[2], SLD_TURN_ON, &g_pstSLDQueue[6], 0, false},
-  {SLD_TURN_ON, &g_pstSLDQueue[3], SLD_TURN_ON, &g_pstSLDQueue[7], 0, false},
+  {SLD_TURN_ON, &g_pstSLDQueue[0], SLD_TURN_ON, &g_pstSLDQueue[0], 0, false},
+  {SLD_TURN_ON, &g_pstSLDQueue[0], SLD_TURN_ON, &g_pstSLDQueue[0], 0, false},
+  {SLD_TURN_ON, &g_pstSLDQueue[0], SLD_TURN_ON, &g_pstSLDQueue[0], 0, false},
+  {SLD_TURN_ON, &g_pstSLDQueue[0], SLD_TURN_ON, &g_pstSLDQueue[0], 0, false},
 }
 
 ;
@@ -77,7 +77,8 @@ void SWInteruptProc(TS_SWParam* pstParam, uint32_t ulSWPin, uint32_t ulCh)
         // 長押し用の要求を通知する
         pstSendReq->unReqType = pstParam->unLongPushReq;
         TS_SLDOnParam* pstSLDParam = (TS_SLDOnParam*)pstSendReq->ucParam;
-        pstSLDParam->ucPower = 255;
+        //pstSLDParam->ucPower = 255;
+        pstSLDParam->ucPower = (uint8_t)(32*ulCh-1);
         xQueueSendFromISR(*(pstParam->pstLongQue), pstSendReq, &xHigherPriorityTaskWoken);
         pstParam->xTimeNow = 0;
         pstParam->bSWFlag = false;
@@ -96,7 +97,8 @@ void SWInteruptProc(TS_SWParam* pstParam, uint32_t ulSWPin, uint32_t ulCh)
         // 短押し用の要求を通知する
         pstSendReq->unReqType = pstParam->unShortPushReq;
         TS_SLDOnParam* pstSLDParam = (TS_SLDOnParam*)pstSendReq->ucParam;
-        pstSLDParam->ucPower = 255;
+        // pstSLDParam->ucPower = 255;
+        pstSLDParam->ucPower = (uint8_t)(32*ulCh-1+128);
         xQueueSendFromISR(*(pstParam->pstShortQue), pstSendReq, &xHigherPriorityTaskWoken);
         pstParam->xTimeNow = 0;
         pstParam->bSWFlag = false;
