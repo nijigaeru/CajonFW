@@ -15,34 +15,37 @@ enum READMIDRequestType {
   READMID_PAUSE                     , // 一時停止
   READMID_RESTART                   , // 再開
   // READMID_RETURN ,                 // 巻き戻し 
+  READMID_SELF                      , // 動作継続要求
   READMID_END                         // 終了
   
 };
 
 // taskのステート
 enum READMIDState {
-  ST_IDLE = 0                       , // 起動時, 待機時ステート
-  ST_WAIT_OPEN                      , // ファイルオープン要求応答待ち
-  ST_WAIT_READ                      , // 初回データリード要求応答待ち
-  ST_READ_HEADER_HEADER             , // ヘッダチャンク読み出し先頭 4B
-  ST_READ_HEADER_LENGTH             , // ヘッダチャンク長 4B格納
-  ST_READ_HEADER_FORMAT             , // フォーマット 2B
-  ST_READ_HEADER_TRACK              , // トラック数 2B
-  ST_READ_HEADER_TIME               , // 時間分解能 2B
-  ST_READ_HEADER_END                , // 分解能判定 & ヘッダチャンク終了まで待機
-  ST_READ_TRACK_HEADER              , // トラックチャンク読み出し先頭4B
-  ST_READ_TRACK_LENGTH              , // データ長 4B
-  ST_READ_TRACK_DELTA               , // デルタタイム取得 1~4B
-  ST_READ_TRACK_WAIT_DELTA          , // デルタタイム待機
-  ST_READ_TRACK_EVENT               , // イベント 1B
-  ST_READ_TRACK_EVENT_SYSEX         , // SysExイベント処理
-  ST_READ_TRACK_EVENT_META          , // メタイベント処理
-  ST_READ_TRACK_EVENT_MIDI_STATE_1B , // MIDIイベント先頭1B読み出し
-  ST_READ_TRACK_EVENT_MIDI_STATE_2B , // MIDIイベント残り2B読み出し
-  ST_READ_TRACK_EVENT_MIDI_NOTE     , // MIDIイベントノーツ処理
-  ST_PAUSE_WAIT_READ                , // 一時停止要求による停止中
-  ST_PAUSE_REQ                      , // データリード要求応答待ちによる停止中 
-  ST_END                              // 終了処理
+  ST_IDLE = 0                               , // 起動時, 待機時ステート
+  ST_WAIT_OPEN                              , // ファイルオープン要求応答待ち
+  ST_WAIT_READ                              , // 初回データリード要求応答待ち
+  ST_READ_HEADER_HEADER                     , // ヘッダチャンク読み出し先頭 4B
+  ST_READ_HEADER_LENGTH                     , // ヘッダチャンク長 4B格納
+  ST_READ_HEADER_FORMAT                     , // フォーマット 2B
+  ST_READ_HEADER_TRACK                      , // トラック数 2B
+  ST_READ_HEADER_TIME                       , // 時間分解能 2B
+  ST_READ_HEADER_END                        , // 分解能判定 & ヘッダチャンク終了まで待機
+  ST_READ_TRACK_HEADER                      , // トラックチャンク読み出し先頭4B
+  ST_READ_TRACK_LENGTH                      , // データ長 4B
+  ST_READ_TRACK_DELTA                       , // デルタタイム取得 1~4B
+  ST_READ_TRACK_WAIT_DELTA                  , // デルタタイム待機
+  ST_READ_TRACK_EVENT                       , // イベント 1B
+  ST_READ_TRACK_EVENT_SYSEX                 , // SysExイベント処理
+  ST_READ_TRACK_EVENT_META                  , // メタイベント処理
+  ST_READ_TRACK_EVENT_META_TEMPO_LENGTH     , // テンポデータ長読み出し
+  ST_READ_TRACK_EVENT_META_TEMPO            , // テンポイベント  
+  ST_READ_TRACK_EVENT_MIDI_STATE_1B         , // MIDIイベント先頭1B読み出し
+  ST_READ_TRACK_EVENT_MIDI_STATE_2B         , // MIDIイベント残り2B読み出し
+  ST_READ_TRACK_EVENT_MIDI_NOTE             , // MIDIイベントノーツ処理
+  ST_PAUSE_WAIT_READ                        , // 一時停止要求による停止中
+  ST_PAUSE_REQ                              , // データリード要求応答待ちによる停止中 
+  ST_END                                      // 終了処理
 };
 
 // 要求の構造体

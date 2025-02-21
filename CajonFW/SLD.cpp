@@ -55,7 +55,7 @@ void SLDTask(void* pvParameters) {
       if (pstRecvReq->unReqType == SLD_TURN_ON) {
         // SLDをONにする
         TS_SLDOnParam* pstSLDOnParam = (TS_SLDOnParam*)pstRecvReq->ucParam;
-        ledcWrite(ucFetCh,pstSLDOnParam->ucPower);
+        ledcWrite(ucFetCh,pstSLDOnParam->ucPower/2);
         Serial.print("SLD(");
         Serial.print(ucFetCh);
         Serial.print("),power(");

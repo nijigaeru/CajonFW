@@ -51,6 +51,9 @@ void READMIDTask(void* pvParameters) {
   uint32_t  ulDeltaTime;    // デルタタイム 1~4B
   uint32_t  ulCntWaitDeltaTime; // 仮のデルタタイム待機カウンタ 4B
   uint32_t  ulMidiEventBuf; // MIDIイベント保持変数 3B
+  uint8_t   ucTempLength;    //
+  uint32_t  ulTempBPM;    //
+   
   
   // 内部構造帯リセット
   ResetStructProc ( &stTaskParam );
@@ -69,6 +72,8 @@ void READMIDTask(void* pvParameters) {
     TS_SLDOnParam* pstSLDParam = (TS_SLDOnParam*)pstSendReq->ucParam;
     // pstSLDParam->ucPower = 255;
     // xQueueSend( g_pstSLDQueue[/*0~7*/], pstSendReq );
+
+    // ReadMidi要求準備
 
     // 要求処理
     if (xQueueReceive(g_pstREADMIDQueue, pstRecvReq, portMAX_DELAY) == pdPASS) {
@@ -137,6 +142,11 @@ void READMIDTask(void* pvParameters) {
               // 何もしない
               break;
             } // endcase
+            // 動作継続要求を送る
+            pstSendReq->unReqType = READMID_SELF;
+            pstSendReq->pstAnsQue = NULL;
+            pstSendReq->ulSize = 0;
+            xQueueSend(g_pstREADMIDQueue, pstSendReq, 100);
           }
           break;
 
@@ -152,6 +162,11 @@ void READMIDTask(void* pvParameters) {
           if(pstRecvReq->unError == 0)
           {
             stTaskParam.ucState          = stTaskParam.ucStatePause;  // ステート再開
+            // 動作継続要求を送る
+            pstSendReq->unReqType = READMID_SELF;
+            pstSendReq->pstAnsQue = NULL;
+            pstSendReq->ulSize = 0;
+            xQueueSend(g_pstREADMIDQueue, pstSendReq, 100);
           }
           break;
 
@@ -169,295 +184,345 @@ void READMIDTask(void* pvParameters) {
           pstRead->ulLength = BUFSIZE;
           xQueueSend(g_pstFMGQueue, pstSendReq, 100);
           break;
+
+        case READMID_SELF   :/* 動作継続要求 */
+            // 内部処理部(MIDIリード)
+            switch (stTaskParam.ucState)
+            {
+                case ST_READ_HEADER_HEADER            : // ヘッダチャンク読み出し先頭 4B
+                if ( ReadDataProc ( &stTaskParam,4) == RET_OK )
+                {
+                    if ( stTaskParam.ulCheckBuf == 0x4D546864 )
+                    {
+                        stTaskParam.ucState = ST_READ_HEADER_LENGTH;
+                        // 動作継続要求を送る
+                        pstSendReq->unReqType = READMID_SELF;
+                        pstSendReq->pstAnsQue = NULL;
+                        pstSendReq->ulSize = 0;
+                        xQueueSend(g_pstREADMIDQueue, pstSendReq, 100);
+                    }
+                    else
+                    {
+                    // エラー処理
+                    stTaskParam.ucState = ST_END;
+                    }
+                }
+                else
+                {
+                    // 何もしない
+                }
+                break;
+
+                case ST_READ_HEADER_LENGTH            : // ヘッダチャンク長 4B格納
+                if ( ReadDataProc ( &stTaskParam,4) == RET_OK )
+                {
+                    ulLengthHeader = stTaskParam.ulCheckBuf;
+                    stTaskParam.ucState = ST_READ_HEADER_LENGTH;
+                }
+                else
+                {
+                    // 何もしない
+                }
+                break;
+                case ST_READ_HEADER_FORMAT            : // フォーマット 2B
+                if ( ReadDataProc ( &stTaskParam,2) == RET_OK )
+                {
+                    unFileFormat = stTaskParam.ulCheckBuf;
+                    stTaskParam.ucState = ST_READ_HEADER_TRACK ;
+                }
+                else
+                {
+                    // 何もしない
+                }
+                break;
+                case ST_READ_HEADER_TRACK             : // トラック数 2B
+                if ( ReadDataProc ( &stTaskParam,2) == RET_OK )
+                {
+                    unTrackNum = stTaskParam.ulCheckBuf;
+                    stTaskParam.ucState = ST_READ_HEADER_TIME;
+                }
+                else
+                {
+                    // 何もしない
+                }
+                break;
+                case ST_READ_HEADER_TIME              : // 時間分解能 2B
+                if ( ReadDataProc ( &stTaskParam,2) == RET_OK )
+                {
+                    unTimeScale = stTaskParam.ulCheckBuf;
+                    if (( unTimeScale >> 15 & 0x0001 ) == 1) // 時間分解能判定(MSBがHなら何分何秒何フレーム/Lなら何小節何拍)
+                    {
+                    ucScaleMode = TIMESCALE_MODE_FLAME;
+                    } else {
+                    ucScaleMode = TIMESCALE_MODE_HAKU;
+                    }
+                    stTaskParam.ucState = ST_READ_HEADER_END;
+                }
+                else
+                {
+                    // 何もしない
+                }
+                break;
+                case ST_READ_HEADER_END               : // ヘッダチャンク終了まで待機
+                if ( ReadDataProc ( &stTaskParam,1) == RET_OK )
+                {
+                    if (stTaskParam.ulCntDataRead == ulLengthHeader ) // 規定数の読み出し完了
+                    {
+                    ucCntTrack = 0;                   // トラック数リセット
+                    stTaskParam.ulCntDataRead = 0;  // データ数リセット
+                    stTaskParam.ucState = ST_READ_TRACK_HEADER;
+                    }
+                    else
+                    {
+                    // 何もしない
+                    }
+                }
+                else
+                {
+                    // 何もしない
+                }
+                break;
+                case ST_READ_TRACK_HEADER             : // トラックチャンク読み出し先頭 4B
+                if ( ReadDataProc ( &stTaskParam,4) == RET_OK )
+                {
+                    if ( stTaskParam.ulCheckBuf == 0x4D54726B )
+                    { 
+                    ucCntTrack++; // トラック数加算
+                    ulMidiEventBuf = 0; // イベント用バッファクリア
+                    // stTaskParam.ulCntStartTrack = stTaskParam.ucCntReadFMG*BUFSIZE + ulNumBuf; // トラックチャンク開始位置を記録(巻き戻し時に実装する)
+                    stTaskParam.ucState = ST_READ_TRACK_LENGTH;
+                    }
+                    else
+                    {
+                    // エラー処理
+                    stTaskParam.ucState = ST_END;
+                    }
+                }
+                else
+                {
+                    // 何もしない
+                }
+                break;
+                case ST_READ_TRACK_LENGTH             : // データ長 4B
+                if ( ReadDataProc ( &stTaskParam,4) == RET_OK )
+                {
+                    ulLengthTrack = stTaskParam.ulCheckBuf;
+                    ulDeltaTime = 0;  // デルタタイムクリア
+                    stTaskParam.ucState = ST_READ_TRACK_DELTA;
+                }
+                else
+                {
+                    // 何もしない
+                }
+                break;
+                case ST_READ_TRACK_DELTA              : // デルタタイム取得 1~4B
+                if ( ReadDataProc ( &stTaskParam,1) == RET_OK )
+                {
+                    ulDeltaTime = (( ulDeltaTime << 25) & 0xFFFFFF80) | ( stTaskParam.ulCheckBuf & 0x0000007F );  // 下位7bitに格納しつつ上位にビットシフト 
+                    if ((( stTaskParam.ulCheckBuf >> 7) & 0x00000001 ) == 0 )  // MSBが0なら次のステートに, 1なら引き続きデルタタイム取得. 
+                    { 
+                    ulCntWaitDeltaTime = 0; // デルタタイムカウンタクリア
+                    stTaskParam.ucState = ST_READ_TRACK_WAIT_DELTA;
+                    }
+                    else
+                    {
+                    // 何もしない
+                    }
+                }
+                else
+                {
+                    // 何もしない
+                }
+                break;
+                case ST_READ_TRACK_WAIT_DELTA         : // デルタタイム待機
+                if ( ulCntWaitDeltaTime == ulDeltaTime )
+                {
+                    stTaskParam.ucState = ST_READ_TRACK_EVENT;
+                }
+                else
+                {
+                    vTaskDelay(pdMS_TO_TICKS(10)); // 実際には計算値を入力する. 
+                }
+                break;
+                case ST_READ_TRACK_EVENT              : // イベント判定 1B
+                if ( ReadDataProc ( &stTaskParam,1) == RET_OK )
+                {
+                    if ((( stTaskParam.ulCheckBuf & 0x000000FF ) == 0xF0 )||(( stTaskParam.ulCheckBuf & 0x000000FF ) == 0xF7 )) // SysExイベント
+                    {
+                    stTaskParam.ucState = ST_READ_TRACK_EVENT_SYSEX;
+                    }
+                    else if ( stTaskParam.ulCheckBuf == 0xFF ) // メタイベント処理
+                    {
+                    stTaskParam.ucState = ST_READ_TRACK_EVENT_META;
+                    }
+                    else if ((( stTaskParam.ulCheckBuf & 0x000000F0 ) == 0x80 )||(( stTaskParam.ulCheckBuf & 0x000000F0 ) == 0x90 ))  // 0x8n or 0x9n // MIDIイベント
+                    {
+                    stTaskParam.ucState = ST_READ_TRACK_EVENT_MIDI_STATE_1B;
+                    }
+                    else  // 想定していないイベントは無視する.(遷移しない)
+                    {
+                    // 何もしない
+                    }
+                }
+                else
+                {
+                    // 何もしない
+                }
+                break;
+                case ST_READ_TRACK_EVENT_SYSEX        : // SysExイベント処理
+                stTaskParam.ucState = ST_READ_TRACK_EVENT; // 一旦考慮しない(無視する)
+                break;
+                case ST_READ_TRACK_EVENT_META         : // メタイベント処理
+                if ( ReadDataProc ( &stTaskParam,1) == RET_OK)
+                {
+                    if (( stTaskParam.ulCheckBuf & 0x000000FF ) == 0xF2 ) // 終了イベント
+                    {
+                        stTaskParam.ulCntDataRead = 0;  // データ数リセット
+                        if ( ucCntTrack==unTrackNum ) // 規定トラック数読み出し完了
+                        {
+                            ucCntTrack = 0; // トラック数リセット
+                            stTaskParam.ucState = ST_END;
+                        }
+                        else
+                        {
+                            stTaskParam.ucState = ST_READ_TRACK_HEADER; // 次のトラック読み出し開始
+                        }
+                    }
+                    if (( stTaskParam.ulCheckBuf & 0x000000FF ) == 0x51 )  // テンポイベント
+                    {
+                        stTaskParam.ucState = ST_READ_TRACK_EVENT_META_TEMPO_LENGTH;
+                    }
+                    else
+                    {
+                        stTaskParam.ucState = ST_READ_TRACK_EVENT; // 一旦考慮しない(別のメタイベント)
+                    }
+                }
+                else
+                {
+                    // 何もしない
+                }
+                break;
+                case ST_READ_TRACK_EVENT_META_TEMPO_LENGTH:
+                if ( ReadDataProc ( &stTaskParam,1) == RET_OK)
+                {
+                    ucTempLength = stTaskParam.ulCheckBuf; // テンポデータ長格納
+                    stTaskParam.ucState = ST_READ_TRACK_EVENT_META_TEMPO;
+                }
+                else
+                {
+                    // 何もしない
+                }
+                case ST_READ_TRACK_EVENT_META_TEMPO:
+                if ( ReadDataProc ( &stTaskParam,ucTempLength) == RET_OK)
+                {
+                    ulTempBPM = stTaskParam.ulCheckBuf; // テンポ格納
+                    stTaskParam.ucState = ST_READ_TRACK_EVENT; // 次のイベントを読む
+                }
+                else
+                {
+                    // 何もしない
+                }
+                case ST_READ_TRACK_EVENT_MIDI_STATE_1B: // MIDIイベント先頭1B読み出し
+                if ((( stTaskParam.ulCheckBuf >> 7 ) & 0x000000FF ) == 1 )  // MSBがHの場合, 前のイベントを引き継ぎ
+                {
+                    ulMidiEventBuf = (( stTaskParam.ulCheckBuf << 16 ) | 0x000000 );  // イベント変更
+                }
+                else
+                {
+                    ulMidiEventBuf = (( ulMidiEventBuf & 0xFF0000 ) | 0x000000 );  // 前のイベントを引き継ぎ
+                }
+                stTaskParam.ucState = ST_READ_TRACK_EVENT_MIDI_STATE_2B;
+                break;
+                case ST_READ_TRACK_EVENT_MIDI_STATE_2B: // MIDIイベント残り2B読み出し
+                if ( ReadDataProc (&stTaskParam,2) == RET_OK )
+                {
+                    ulMidiEventBuf = ( ( ulMidiEventBuf & 0xFF0000 ) | ( stTaskParam.ulCheckBuf & 0x00FFFF ));
+                    stTaskParam.ucState = ST_READ_TRACK_EVENT_MIDI_NOTE;
+                }
+                else
+                {
+                    // 何もしない
+                }
+                break;
+                case ST_READ_TRACK_EVENT_MIDI_NOTE    : // MIDIイベントノーツ処理
+                if (( ulMidiEventBuf >> 20 ) == 0x9 ) // ノートオン
+                {
+                    // ulMidiEventBuf[19:16]:チャンネル, [15:8]:音階, [7:0]ベロシティ(強さ)
+                    if ((( ulMidiEventBuf >> 8 ) & 0x000000FF ) == 0x28 )
+                    {
+                        pstSLDParam->ucPower = ( ulMidiEventBuf & 0x000000FF );
+                        xQueueSend( g_pstSLDQueue[0], pstSendReq, 100 );
+                    }
+                    else if ((( ulMidiEventBuf >> 8 ) & 0x000000FF ) == 0x24 )
+                    {
+                        pstSLDParam->ucPower = ( ulMidiEventBuf & 0x000000FF );
+                        xQueueSend( g_pstSLDQueue[1], pstSendReq, 100 );
+                    }
+                    else if ((( ulMidiEventBuf >> 8 ) & 0x000000FF ) == 0x46 )
+                    {
+                        pstSLDParam->ucPower = ( ulMidiEventBuf & 0x000000FF );
+                        xQueueSend( g_pstSLDQueue[4], pstSendReq, 100 );
+                    }
+                    else if ((( ulMidiEventBuf >> 8 ) & 0x000000FF ) == 0x31 )
+                    {
+                        pstSLDParam->ucPower = ( ulMidiEventBuf & 0x000000FF );
+                        xQueueSend( g_pstSLDQueue[5], pstSendReq, 100 );
+                    }
+                    else if ((( ulMidiEventBuf >> 8 ) & 0x000000FF ) == 0x2E )
+                    {
+                        pstSLDParam->ucPower = ( ulMidiEventBuf & 0x000000FF );
+                        xQueueSend( g_pstSLDQueue[6], pstSendReq, 100 );
+                    }
+                }
+                else if (( ulMidiEventBuf >> 20 ) == 0x8 ) // ノートオフ
+                {
+                    // ドラムなのでノートオフは無し ulMidiEventBuf[19:16]:チャンネル, [15:8]:音階, [7:0]ベロシティ(強さ)
+                }
+                else if (( ulMidiEventBuf >> 20 ) == 0xB ) // コントロールチェンジ
+                {
+                    // 何もしない(一旦考慮しない)
+                }
+                else 
+                {
+                    // 何もしない(想定していないMIDIイベント)
+                }
+                stTaskParam.ucState = ST_READ_TRACK_EVENT; // 次のイベントを読む
+                break;
+                case ST_END                           : // 終了処理
+                // リセット
+                ResetStructProc ( &stTaskParam );
+                // 待機状態に遷移(次の開始要求まで何もしない)
+                stTaskParam.ucState = ST_IDLE;
+                break;
+                default : // ST_IDLE, ST_WAIT_OPEN, ST_WAIT_READ, ST_PAUSE_REQ, ST_PAUSE_WAIT_READ
+                // 何もしない
+                break;
+            } // endcase
+            break;
         default:
           // 何もしない
           break;
       } // endcase
 
-
-      // 内部処理部
+      // 継続のための要求を送る. 
       switch (stTaskParam.ucState)
       {
-        case ST_READ_HEADER_HEADER            : // ヘッダチャンク読み出し先頭 4B
-          if ( ReadDataProc ( &stTaskParam,4) == RET_OK )
-          {
-            if ( stTaskParam.ulCheckBuf == 0x4D546864 )
-            {
-              stTaskParam.ucState = ST_READ_HEADER_LENGTH;
-            }
-            else
-            {
-              // エラー処理
-              stTaskParam.ucState = ST_END;
-            }
-          }
-          else
-          {
+        case ST_IDLE:
+        case ST_PAUSE_REQ:
+        case ST_PAUSE_WAIT_READ:
+        case ST_WAIT_OPEN:
+        case ST_WAIT_READ:
+        case ST_END:
             // 何もしない
-          }
-          break;
-
-        case ST_READ_HEADER_LENGTH            : // ヘッダチャンク長 4B格納
-          if ( ReadDataProc ( &stTaskParam,4) == RET_OK )
-          {
-            ulLengthHeader = stTaskParam.ulCheckBuf;
-            stTaskParam.ucState = ST_READ_HEADER_LENGTH;
-          }
-          else
-          {
-            // 何もしない
-          }
-          break;
-        case ST_READ_HEADER_FORMAT            : // フォーマット 2B
-          if ( ReadDataProc ( &stTaskParam,2) == RET_OK )
-          {
-            unFileFormat = stTaskParam.ulCheckBuf;
-            stTaskParam.ucState = ST_READ_HEADER_TRACK ;
-          }
-          else
-          {
-            // 何もしない
-          }
-          break;
-        case ST_READ_HEADER_TRACK             : // トラック数 2B
-          if ( ReadDataProc ( &stTaskParam,2) == RET_OK )
-          {
-            unTrackNum = stTaskParam.ulCheckBuf;
-            stTaskParam.ucState = ST_READ_HEADER_TIME;
-          }
-          else
-          {
-            // 何もしない
-          }
-          break;
-        case ST_READ_HEADER_TIME              : // 時間分解能 2B
-          if ( ReadDataProc ( &stTaskParam,2) == RET_OK )
-          {
-            unTimeScale = stTaskParam.ulCheckBuf;
-            if (( unTimeScale >> 15 & 0x0001 ) == 1) // 時間分解能判定(MSBがHなら何分何秒何フレーム/Lなら何小節何拍)
-            {
-              ucScaleMode = TIMESCALE_MODE_FLAME;
-            } else {
-              ucScaleMode = TIMESCALE_MODE_HAKU;
-            }
-            stTaskParam.ucState = ST_READ_HEADER_END;
-          }
-          else
-          {
-            // 何もしない
-          }
-          break;
-        case ST_READ_HEADER_END               : // ヘッダチャンク終了まで待機
-          if ( ReadDataProc ( &stTaskParam,1) == RET_OK )
-          {
-            if (stTaskParam.ulCntDataRead == ulLengthHeader ) // 規定数の読み出し完了
-            {
-              ucCntTrack = 0;                   // トラック数リセット
-              stTaskParam.ulCntDataRead = 0;  // データ数リセット
-              stTaskParam.ucState = ST_READ_TRACK_HEADER;
-            }
-            else
-            {
-              // 何もしない
-            }
-          }
-          else
-          {
-            // 何もしない
-          }
-          break;
-        case ST_READ_TRACK_HEADER             : // トラックチャンク読み出し先頭 4B
-          if ( ReadDataProc ( &stTaskParam,4) == RET_OK )
-          {
-            if ( stTaskParam.ulCheckBuf == 0x4D54726B )
-            { 
-              ucCntTrack++; // トラック数加算
-              ulMidiEventBuf = 0; // イベント用バッファクリア
-              // stTaskParam.ulCntStartTrack = stTaskParam.ucCntReadFMG*BUFSIZE + ulNumBuf; // トラックチャンク開始位置を記録(巻き戻し時に実装する)
-              stTaskParam.ucState = ST_READ_TRACK_LENGTH;
-            }
-            else
-            {
-              // エラー処理
-              stTaskParam.ucState = ST_END;
-            }
-          }
-          else
-          {
-            // 何もしない
-          }
-          break;
-        case ST_READ_TRACK_LENGTH             : // データ長 4B
-          if ( ReadDataProc ( &stTaskParam,4) == RET_OK )
-          {
-            ulLengthTrack = stTaskParam.ulCheckBuf;
-            ulDeltaTime = 0;  // デルタタイムクリア
-            stTaskParam.ucState = ST_READ_TRACK_DELTA;
-          }
-          else
-          {
-            // 何もしない
-          }
-          break;
-        case ST_READ_TRACK_DELTA              : // デルタタイム取得 1~4B
-          if ( ReadDataProc ( &stTaskParam,1) == RET_OK )
-          {
-            ulDeltaTime = (( ulDeltaTime << 25) & 0xFFFFFF80) | ( stTaskParam.ulCheckBuf & 0x0000007F );  // 下位7bitに格納しつつ上位にビットシフト 
-            if ((( stTaskParam.ulCheckBuf >> 7) & 0x00000001 ) == 0 )  // MSBが0なら次のステートに, 1なら引き続きデルタタイム取得. 
-            { 
-              ulCntWaitDeltaTime = 0; // デルタタイムカウンタクリア
-              stTaskParam.ucState = ST_READ_TRACK_WAIT_DELTA;
-            }
-            else
-            {
-              // 何もしない
-            }
-          }
-          else
-          {
-            // 何もしない
-          }
-          break;
-        case ST_READ_TRACK_WAIT_DELTA         : // デルタタイム待機
-          if ( ulCntWaitDeltaTime == ulDeltaTime )
-          {
-            stTaskParam.ucState = ST_READ_TRACK_EVENT;
-          }
-          else
-          {
-            ulCntWaitDeltaTime++; // 【PENDING】時間待機を実装する. 
-          }
-          break;
-        case ST_READ_TRACK_EVENT              : // イベント判定 1B
-          if ( ReadDataProc ( &stTaskParam,1) == RET_OK )
-          {
-            if ((( stTaskParam.ulCheckBuf & 0x000000FF ) == 0xF0 )||(( stTaskParam.ulCheckBuf & 0x000000FF ) == 0xF7 )) // SysExイベント
-            {
-              stTaskParam.ucState = ST_READ_TRACK_EVENT_SYSEX;
-            }
-            else if ( stTaskParam.ulCheckBuf == 0xFF ) // メタイベント処理
-            {
-              stTaskParam.ucState = ST_READ_TRACK_EVENT_META;
-            }
-            else if ((( stTaskParam.ulCheckBuf & 0x000000F0 ) == 0x80 )||(( stTaskParam.ulCheckBuf & 0x000000F0 ) == 0x90 ))  // 0x8n or 0x9n // MIDIイベント
-            {
-              stTaskParam.ucState = ST_READ_TRACK_EVENT_MIDI_STATE_1B;
-            }
-            else  // 想定していないイベントは無視する.(遷移しない)
-            {
-              // 何もしない
-            }
-          }
-          else
-          {
-            // 何もしない
-          }
-          break;
-        case ST_READ_TRACK_EVENT_SYSEX        : // SysExイベント処理
-          stTaskParam.ucState = ST_READ_TRACK_EVENT; // 一旦考慮しない(無視する)
-          break;
-        case ST_READ_TRACK_EVENT_META         : // メタイベント処理
-          if ( ReadDataProc ( &stTaskParam,1) == RET_OK)
-          {
-            if (( stTaskParam.ulCheckBuf & 0x000000FF ) == 0xF2 ) // 終了イベント
-            {
-              stTaskParam.ulCntDataRead = 0;  // データ数リセット
-              if ( ucCntTrack==unTrackNum ) // 規定トラック数読み出し完了
-              {
-                ucCntTrack = 0; // トラック数リセット
-                stTaskParam.ucState = ST_END;
-              }
-              else
-              {
-                stTaskParam.ucState = ST_READ_TRACK_HEADER; // 次のトラック読み出し開始
-              }
-            }
-            else
-            {
-              stTaskParam.ucState = ST_READ_TRACK_EVENT; // 一旦考慮しない(別のメタイベント)
-            }
-          }
-          else
-          {
-            // 何もしない
-          }
-          break;
-        case ST_READ_TRACK_EVENT_MIDI_STATE_1B: // MIDIイベント先頭1B読み出し
-          if ((( stTaskParam.ulCheckBuf >> 7 ) & 0x000000FF ) == 1 )  // MSBがHの場合, 前のイベントを引き継ぎ
-          {
-            ulMidiEventBuf = (( stTaskParam.ulCheckBuf << 16 ) | 0x000000 );  // イベント変更
-          }
-          else
-          {
-            ulMidiEventBuf = (( ulMidiEventBuf & 0xFF0000 ) | 0x000000 );  // 前のイベントを引き継ぎ
-          }
-          stTaskParam.ucState = ST_READ_TRACK_EVENT_MIDI_STATE_2B;
-          break;
-        case ST_READ_TRACK_EVENT_MIDI_STATE_2B: // MIDIイベント残り2B読み出し
-          if ( ReadDataProc (&stTaskParam,2) == RET_OK )
-          {
-            ulMidiEventBuf = ( ( ulMidiEventBuf & 0xFF0000 ) | ( stTaskParam.ulCheckBuf & 0x00FFFF ));
-            stTaskParam.ucState = ST_READ_TRACK_EVENT_MIDI_NOTE;
-          }
-          else
-          {
-            // 何もしない
-          }
-          break;
-        case ST_READ_TRACK_EVENT_MIDI_NOTE    : // MIDIイベントノーツ処理
-          if (( ulMidiEventBuf >> 20 ) == 0x9 ) // ノートオン
-          {
-            // ulMidiEventBuf[19:16]:チャンネル, [15:8]:音階, [7:0]ベロシティ(強さ)
-            if ((( ulMidiEventBuf >> 8 ) & 0x000000FF ) == 0x28 )
-            {
-                pstSLDParam->ucPower = ( ulMidiEventBuf & 0x000000FF );
-                xQueueSend( g_pstSLDQueue[0], pstSendReq, 100 );
-            }
-            else if ((( ulMidiEventBuf >> 8 ) & 0x000000FF ) == 0x24 )
-            {
-                pstSLDParam->ucPower = ( ulMidiEventBuf & 0x000000FF );
-                xQueueSend( g_pstSLDQueue[1], pstSendReq, 100 );
-            }
-            else if ((( ulMidiEventBuf >> 8 ) & 0x000000FF ) == 0x46 )
-            {
-                pstSLDParam->ucPower = ( ulMidiEventBuf & 0x000000FF );
-                xQueueSend( g_pstSLDQueue[4], pstSendReq, 100 );
-            }
-            else if ((( ulMidiEventBuf >> 8 ) & 0x000000FF ) == 0x31 )
-            {
-                pstSLDParam->ucPower = ( ulMidiEventBuf & 0x000000FF );
-                xQueueSend( g_pstSLDQueue[5], pstSendReq, 100 );
-            }
-            else if ((( ulMidiEventBuf >> 8 ) & 0x000000FF ) == 0x2E )
-            {
-                pstSLDParam->ucPower = ( ulMidiEventBuf & 0x000000FF );
-                xQueueSend( g_pstSLDQueue[6], pstSendReq, 100 );
-            }
-          }
-          else if (( ulMidiEventBuf >> 20 ) == 0x8 ) // ノートオフ
-          {
-            // ドラムなのでノートオフは無し ulMidiEventBuf[19:16]:チャンネル, [15:8]:音階, [7:0]ベロシティ(強さ)
-          }
-          else if (( ulMidiEventBuf >> 20 ) == 0xB ) // コントロールチェンジ
-          {
-            // 何もしない(一旦考慮しない)
-          }
-          else 
-          {
-            // 何もしない(想定していないMIDIイベント)
-          }
-          stTaskParam.ucState = ST_READ_TRACK_EVENT; // 次のイベントを読む
-          break;
-        case ST_END                           : // 終了処理
-          // リセット
-          ResetStructProc ( &stTaskParam );
-          // 待機状態に遷移(次の開始要求まで何もしない)
-          stTaskParam.ucState = ST_IDLE;
-          break;
-        default : // ST_IDLE, ST_WAIT_OPEN, ST_WAIT_READ, ST_PAUSE_REQ, ST_PAUSE_WAIT_READ
-          // 何もしない
-          break;
-      } // endcase
+        break;
+        default:
+            // 動作継続要求を送る
+            pstSendReq->unReqType = READMID_SELF;
+            pstSendReq->pstAnsQue = NULL;
+            pstSendReq->ulSize = 0;
+            xQueueSend(g_pstREADMIDQueue, pstSendReq, 100);
+        break;
+      }
     }
   }
 }
