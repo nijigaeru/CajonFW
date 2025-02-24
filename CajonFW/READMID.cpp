@@ -357,6 +357,7 @@ void READMIDTask(void* pvParameters) {
               case ST_READ_TRACK_WAIT_DELTA         : // デルタタイム待機
                 if ( ucScaleMode == TIMESCALE_MODE_FLAME )   // 何分何秒何フレーム
                 {
+                  // こちらのモードはメジャーではないため一旦同じ実装とする. 
                   ulWaitTimeMsec = ulTempBPM * ( ulDeltaTime / unTimeScale ) / 1000; // msオーダー換算
                 } 
                 else if ( ucScaleMode == TIMESCALE_MODE_BEATS ) // 何小節何拍
