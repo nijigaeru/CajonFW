@@ -11,6 +11,7 @@
 #include "SW.h"
 #include "FMG.h"
 #include "SLD.h"
+#include "READMID.h"
 #include "REQ.h"
 
 /******** macro  ***** */
@@ -25,9 +26,9 @@ TS_SWParam stSWParam[4] =
   {SLD_TURN_ON, &g_pstSLDQueue[1], SLD_TURN_ON, &g_pstSLDQueue[5], 0, false},
   {SLD_TURN_ON, &g_pstSLDQueue[2], SLD_TURN_ON, &g_pstSLDQueue[6], 0, false},
   {SLD_TURN_ON, &g_pstSLDQueue[3], SLD_TURN_ON, &g_pstSLDQueue[7], 0, false},
-}
+};
 
-;
+char Filename[] = "senbonzakura.mid";
 
 /******** function declaration ***** */
 void IRAM_ATTR SW1Interrupt();      // SW1の割り込み
@@ -79,6 +80,10 @@ void SWInteruptProc(TS_SWParam* pstParam, uint32_t ulSWPin, uint32_t ulCh)
         TS_SLDOnParam* pstSLDParam = (TS_SLDOnParam*)pstSendReq->ucParam;
         pstSLDParam->ucPower = 255;
         xQueueSendFromISR(*(pstParam->pstLongQue), pstSendReq, &xHigherPriorityTaskWoken);
+        // pstSendReq->unReqType = ;
+        //TS_SLDOnParam* pstSLDParam = (TS_SLDOnParam*)pstSendReq->ucParam;
+        //pstSLDParam->ucPower = 255;
+        //xQueueSendFromISR(*(pstParam->pstLongQue), pstSendReq, &xHigherPriorityTaskWoken);
         pstParam->xTimeNow = 0;
         pstParam->bSWFlag = false;
       } else if ((xTimeNow - pstParam->xTimeNow) < SW_INVALID_TIME){
@@ -94,10 +99,14 @@ void SWInteruptProc(TS_SWParam* pstParam, uint32_t ulSWPin, uint32_t ulCh)
         Serial.println(xTimeNow);
         #endif
         // 短押し用の要求を通知する
-        pstSendReq->unReqType = pstParam->unShortPushReq;
-        TS_SLDOnParam* pstSLDParam = (TS_SLDOnParam*)pstSendReq->ucParam;
-        pstSLDParam->ucPower = 255;
-        xQueueSendFromISR(*(pstParam->pstShortQue), pstSendReq, &xHigherPriorityTaskWoken);
+        // pstSendReq->unReqType = pstParam->unShortPushReq;
+        // TS_SLDOnParam* pstSLDParam = (TS_SLDOnParam*)pstSendReq->ucParam;
+        // pstSLDParam->ucPower = 255;
+        // xQueueSendFromISR(*(pstParam->pstShortQue), pstSendReq, &xHigherPriorityTaskWoken);
+        pstSendReq->unReqType = READMID_START;
+        TS_READMIDStartParam* pstREADParam = (TS_READMIDStartParam*)pstSendReq->ucParam;
+        memcpy(pstREADParam->ucFileName,Filename, sizeof(Filename));
+        xQueueSendFromISR(g_pstREADMIDQueue, pstSendReq, &xHigherPriorityTaskWoken);
         pstParam->xTimeNow = 0;
         pstParam->bSWFlag = false;
       }
