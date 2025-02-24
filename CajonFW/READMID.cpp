@@ -6,7 +6,7 @@
 /******** macro ***** */
 #define BUFSIZE              1024
 #define TIMESCALE_MODE_FLAME 1
-#define TIMESCALE_MODE_HAKU  0
+#define TIMESCALE_MODE_BEATS 0
 #define RET_OK               1
 #define RET_NG               0
 
@@ -266,8 +266,10 @@ void READMIDTask(void* pvParameters) {
                   if (( unTimeScale >> 15 & 0x0001 ) == 1) // 時間分解能判定(MSBがHなら何分何秒何フレーム/Lなら何小節何拍)
                   {
                     ucScaleMode = TIMESCALE_MODE_FLAME;
-                  } else {
-                    ucScaleMode = TIMESCALE_MODE_HAKU;
+                  } 
+                  else 
+                  {
+                    ucScaleMode = TIMESCALE_MODE_BEATS;
                   }
                   unTimeScale = ( unTimeScale & 0x7FFF ); // MSBはフラグのためカット
                   stTaskParam.ucState = ST_READ_HEADER_END;
@@ -353,7 +355,14 @@ void READMIDTask(void* pvParameters) {
                 break;
 
               case ST_READ_TRACK_WAIT_DELTA         : // デルタタイム待機
-                ulWaitTimeMsec = ulTempBPM * ( ulDeltaTime / unTimeScale ) / 1000; // msオーダー換算
+                if ( ucScaleMode == TIMESCALE_MODE_FLAME )   // 何分何秒何フレーム
+                {
+                  ulWaitTimeMsec = ulTempBPM * ( ulDeltaTime / unTimeScale ) / 1000; // msオーダー換算
+                } 
+                else if ( ucScaleMode == TIMESCALE_MODE_BEATS ) // 何小節何拍
+                {
+                  ulWaitTimeMsec = ulTempBPM * ( ulDeltaTime / unTimeScale ) / 1000; // msオーダー換算
+                }
                 vTaskDelay(pdMS_TO_TICKS(ulWaitTimeMsec));  // 待機
                 stTaskParam.ucState = ST_READ_TRACK_EVENT;
                 break;
