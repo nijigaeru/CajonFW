@@ -90,6 +90,9 @@ void READMIDTask(void* pvParameters) {
           switch (stTaskParam.ucState)
           {
             case ST_IDLE:
+              // リセット
+              ResetStructProc ( &stTaskParam );
+
               // ファイルオープン要求
               pstSendReq->unReqType = FMG_OPEN;
               pstSendReq->pstAnsQue = g_pstREADMIDQueue;
@@ -119,8 +122,8 @@ void READMIDTask(void* pvParameters) {
                 pstRead->pucBuffer = g_ucBuffer;
                 pstRead->ulLength = BUFSIZE;
                 xQueueSend(g_pstFMGQueue, pstSendReq, 100);
-                // リセット
-                ResetStructProc ( &stTaskParam );
+                
+                stTaskParam.ucState = ST_WAIT_READ;
                 break;
               default:
                 // 何もしない
@@ -563,8 +566,6 @@ void READMIDTask(void* pvParameters) {
 uint32_t ReadDataProc ( TS_READMIDSTaskParam* stTaskParam, uint8_t ucByteNum ) {
   uint8_t ucOutByteNum = ucByteNum; // 残り必要出力データ数
     // 要求
-    uint8_t ucRecvReq[REQ_QUE_SIZE];
-    TS_Req* pstRecvReq = (TS_Req*)ucRecvReq;
     uint8_t ucSendReq[REQ_QUE_SIZE];
     TS_Req* pstSendReq = (TS_Req*)ucSendReq;
   // 残データチェック&出力
@@ -618,7 +619,7 @@ uint32_t ReadDataProc ( TS_READMIDSTaskParam* stTaskParam, uint8_t ucByteNum ) {
       stTaskParam->ulCntDataRead++;
     }
     // ファイルデータ取得要求
-    TS_FMGReadParam* pstRead = (TS_FMGReadParam*)pstRecvReq->ucParam;
+    TS_FMGReadParam* pstRead = (TS_FMGReadParam*)pstSendReq->ucParam;
     pstSendReq->unReqType = FMG_READ;
     pstSendReq->pstAnsQue = g_pstREADMIDQueue;
     pstSendReq->ulSize = sizeof(TS_FMGReadParam);
@@ -629,7 +630,7 @@ uint32_t ReadDataProc ( TS_READMIDSTaskParam* stTaskParam, uint8_t ucByteNum ) {
     // 現在のステートを保持. 
     stTaskParam->ucStatePause = stTaskParam->ucState;
     // ステートをポーズに変更. 
-    stTaskParam->ucState = ST_PAUSE_REQ;
+    stTaskParam->ucState = ST_PAUSE_WAIT_READ;
     return RET_OK;
   }
   else  // データが不足している場合 
@@ -643,7 +644,7 @@ uint32_t ReadDataProc ( TS_READMIDSTaskParam* stTaskParam, uint8_t ucByteNum ) {
       stTaskParam->ulCntDataRead++;
     }
     // ファイルデータ取得要求
-    TS_FMGReadParam* pstRead = (TS_FMGReadParam*)pstRecvReq->ucParam;
+    TS_FMGReadParam* pstRead = (TS_FMGReadParam*)pstSendReq->ucParam;
     pstSendReq->unReqType = FMG_READ;
     pstSendReq->pstAnsQue = g_pstREADMIDQueue;
     pstSendReq->ulSize = sizeof(TS_FMGReadParam);
@@ -654,7 +655,7 @@ uint32_t ReadDataProc ( TS_READMIDSTaskParam* stTaskParam, uint8_t ucByteNum ) {
     // 現在のステートを保持. 
     stTaskParam->ucStatePause = stTaskParam->ucState;
     // ステートをポーズに変更. 
-    stTaskParam->ucState = ST_PAUSE_REQ;
+    stTaskParam->ucState = ST_PAUSE_WAIT_READ;
     return RET_NG;
   }
 }
