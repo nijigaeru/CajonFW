@@ -208,15 +208,12 @@ void READMIDTask(void* pvParameters) {
                 {
                   if ( stTaskParam.ulCheckBuf == 0x4D546864 )
                   {
+                    // USBSerial.println("MIDI file head chank detected.");
                     stTaskParam.ucState = ST_READ_HEADER_LENGTH;
-                    // 動作継続要求を送る
-                    pstSendReq->unReqType = READMID_SELF;
-                    pstSendReq->pstAnsQue = NULL;
-                    pstSendReq->ulSize = 0;
-                    xQueueSend(g_pstREADMIDQueue, pstSendReq, 100);
                   }
                   else
                   {
+                    USBSerial.println("MIDI file head chank not detected.");
                     // エラー処理
                     stTaskParam.ucState = ST_END;
                   }
@@ -230,8 +227,11 @@ void READMIDTask(void* pvParameters) {
               case ST_READ_HEADER_LENGTH            : // ヘッダチャンク長 4B格納
                 if ( ReadDataProc ( &stTaskParam,4) == RET_OK )
                 {
+                  USBSerial.print("MIDI file head chank length:");
+                  USBSerial.println(stTaskParam.ulCheckBuf);
+
                   ulLengthHeader = stTaskParam.ulCheckBuf;
-                  stTaskParam.ucState = ST_READ_HEADER_LENGTH;
+                  stTaskParam.ucState = ST_READ_HEADER_FORMAT;
                 }
                 else
                 {
@@ -240,8 +240,12 @@ void READMIDTask(void* pvParameters) {
                 break;
 
               case ST_READ_HEADER_FORMAT            : // フォーマット 2B
+                vTaskDelay(pdMS_TO_TICKS(100)); // for serial debug
                 if ( ReadDataProc ( &stTaskParam,2) == RET_OK )
                 {
+                  USBSerial.print("MIDI file format:");
+                  USBSerial.println(stTaskParam.ulCheckBuf);
+
                   unFileFormat = stTaskParam.ulCheckBuf;
                   stTaskParam.ucState = ST_READ_HEADER_TRACK ;
                 }
@@ -254,6 +258,9 @@ void READMIDTask(void* pvParameters) {
               case ST_READ_HEADER_TRACK             : // トラック数 2B
                 if ( ReadDataProc ( &stTaskParam,2) == RET_OK )
                 {
+                  USBSerial.print("MIDI file track number:");
+                  USBSerial.println(stTaskParam.ulCheckBuf);
+
                   unTrackNum = stTaskParam.ulCheckBuf;
                   stTaskParam.ucState = ST_READ_HEADER_TIME;
                 }
@@ -266,6 +273,9 @@ void READMIDTask(void* pvParameters) {
               case ST_READ_HEADER_TIME              : // 時間分解能 2B
                 if ( ReadDataProc ( &stTaskParam,2) == RET_OK )
                 {
+                  USBSerial.print("MIDI file time scale:");
+                  USBSerial.println(stTaskParam.ulCheckBuf);
+
                   unTimeScale = stTaskParam.ulCheckBuf;
                   if (( unTimeScale >> 15 & 0x0001 ) == 1) // 時間分解能判定(MSBがHなら何分何秒何フレーム/Lなら何小節何拍)
                   {
@@ -276,7 +286,8 @@ void READMIDTask(void* pvParameters) {
                     ucScaleMode = TIMESCALE_MODE_BEATS;
                   }
                   unTimeScale = ( unTimeScale & 0x7FFF ); // MSBはフラグのためカット
-                  stTaskParam.ucState = ST_READ_HEADER_END;
+                  // stTaskParam.ucState = ST_READ_HEADER_END;
+                  stTaskParam.ucState = ST_READ_TRACK_HEADER; // ここでヘッダは終わり。トラックを読み始める。
                 }
                 else
                 {
@@ -285,10 +296,13 @@ void READMIDTask(void* pvParameters) {
                 break;
 
               case ST_READ_HEADER_END               : // ヘッダチャンク終了まで待機
+                //! @bug ヘッダ長は6byte固定っぽいので、ここで1byte読んでしまうと変になると思われる（hirose）
                 if ( ReadDataProc ( &stTaskParam,1) == RET_OK )
                 {
                   if (stTaskParam.ulCntDataRead == ulLengthHeader ) // 規定数の読み出し完了
                   {
+                    USBSerial.println("MIDI file head chank end.");
+
                     ucCntTrack = 0;                   // トラック数リセット
                     stTaskParam.ulCntDataRead = 0;    // データ数リセット
                     stTaskParam.ucState = ST_READ_TRACK_HEADER;
@@ -309,6 +323,9 @@ void READMIDTask(void* pvParameters) {
                 {
                   if ( stTaskParam.ulCheckBuf == 0x4D54726B )
                   { 
+                    USBSerial.print("MIDI file track chank detected:");
+                    USBSerial.println(ucCntTrack);
+
                     ucCntTrack++; // トラック数加算
                     ucMidiEvent = 0; // イベント用バッファクリア
                     // stTaskParam.ulCntStartTrack = stTaskParam.ucCntReadFMG*BUFSIZE + ulNumBuf; // トラックチャンク開始位置を記録(巻き戻し時に実装する)
@@ -316,6 +333,8 @@ void READMIDTask(void* pvParameters) {
                   }
                   else
                   {
+                    USBSerial.println("MIDI file track chank not detected.");
+
                     // エラー処理
                     stTaskParam.ucState = ST_END;
                   }
@@ -329,6 +348,9 @@ void READMIDTask(void* pvParameters) {
               case ST_READ_TRACK_LENGTH             : // データ長 4B
                 if ( ReadDataProc ( &stTaskParam,4) == RET_OK )
                 {
+                  USBSerial.print("MIDI file track chank length:");
+                  USBSerial.println(stTaskParam.ulCheckBuf);
+
                   ulLengthTrack = stTaskParam.ulCheckBuf;
                   ulDeltaTime = 0;  // デルタタイムクリア
                   stTaskParam.ucState = ST_READ_TRACK_DELTA;
@@ -601,6 +623,7 @@ uint32_t ReadDataProc ( TS_READMIDSTaskParam* stTaskParam, uint8_t ucByteNum ) {
   if (( stTaskParam->ulNumBuf + ucOutByteNum ) < BUFSIZE )   // データが足りている場合
   {
     // 格納
+    stTaskParam->ulCheckBuf = 0;
     for (size_t i = 0; i < ucOutByteNum; i++)
     {
       stTaskParam->ulCheckBuf = ( stTaskParam->ulCheckBuf << 8 ) | g_ucBuffer[stTaskParam->ulNumBuf] ;  // ビッグエンディアンとして格納. 
@@ -612,6 +635,7 @@ uint32_t ReadDataProc ( TS_READMIDSTaskParam* stTaskParam, uint8_t ucByteNum ) {
   else if (( stTaskParam->ulNumBuf + ucOutByteNum ) == BUFSIZE )  // データをちょうど使い切る場合
   {
     // 格納
+    stTaskParam->ulCheckBuf = 0;
     for (int i = 0; i < ucOutByteNum; i++)
     {
       stTaskParam->ulCheckBuf = ( stTaskParam->ulCheckBuf << 8 ) | g_ucBuffer[stTaskParam->ulNumBuf] ;  // ビッグエンディアンとして格納. 
@@ -637,9 +661,10 @@ uint32_t ReadDataProc ( TS_READMIDSTaskParam* stTaskParam, uint8_t ucByteNum ) {
   {
     ucOutByteNum = BUFSIZE - stTaskParam->ulNumBuf;  // 残データ数計算
     // 残データバッファに格納する. 
+    stTaskParam->ulBufHold = 0;
     for (int i = 0; i < ucOutByteNum; i++)
     {
-      stTaskParam->ulBufHold = ( stTaskParam->ulCheckBuf << 8 ) | g_ucBuffer[stTaskParam->ulNumBuf] ;  // ビッグエンディアンとして格納. 
+      stTaskParam->ulBufHold = ( stTaskParam->ulBufHold << 8 ) | g_ucBuffer[stTaskParam->ulNumBuf] ;  // ビッグエンディアンとして格納. 
       stTaskParam->ulNumBuf++;
       stTaskParam->ulCntDataRead++;
     }
