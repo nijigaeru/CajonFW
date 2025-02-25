@@ -5,7 +5,7 @@
 #include "pinasign.h"
 
 // ソレノイド駆動時間（ミリ秒）
-#define SLD_ON_TIME 100
+#define SLD_ON_TIME 40
 
 // キューの定義
 QueueHandle_t g_pstSLDQueue[SLD_NUM];
@@ -56,11 +56,11 @@ void SLDTask(void* pvParameters) {
         // SLDをONにする
         TS_SLDOnParam* pstSLDOnParam = (TS_SLDOnParam*)pstRecvReq->ucParam;
         ledcWrite(ucFetCh,pstSLDOnParam->ucPower/2);
-        USBSerial.print("SLD(");
-        USBSerial.print(ucFetCh);
-        USBSerial.print("),power(");
-        USBSerial.print(pstSLDOnParam->ucPower);
-        USBSerial.println(") turned ON.");
+        // USBSerial.print("SLD(");
+        // USBSerial.print(ucFetCh);
+        // USBSerial.print("),power(");
+        // USBSerial.print(pstSLDOnParam->ucPower);
+        // USBSerial.println(") turned ON.");
         // 一定時間待つ
         vTaskDelay(pdMS_TO_TICKS(SLD_ON_TIME));
         // SLDをOFFにする
