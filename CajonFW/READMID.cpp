@@ -26,7 +26,7 @@ void READMIDTask(void* pvParameters) {
   // キューの作成
   g_pstREADMIDQueue = xQueueCreate(REQ_QUE_NUM, REQ_QUE_SIZE);
   if (g_pstREADMIDQueue == NULL) {
-    Serial.println("Failed to create queue.");
+    USBSerial.println("Failed to create queue.");
     return;
   }
 
@@ -34,9 +34,9 @@ void READMIDTask(void* pvParameters) {
   TS_READMIDSTaskParam stTaskParam;
 
   // 要求
-  uint8_t ucRecvReq[REQ_QUE_SIZE];
+  static uint8_t ucRecvReq[REQ_QUE_SIZE]; // スタックを消費したくないのでstatic
   TS_Req* pstRecvReq = (TS_Req*)ucRecvReq;
-  uint8_t ucSendReq[REQ_QUE_SIZE];
+  static uint8_t ucSendReq[REQ_QUE_SIZE]; // スタックを消費したくないのでstatic
   TS_Req* pstSendReq = (TS_Req*)ucSendReq;
 
   // 内部変数
@@ -71,7 +71,7 @@ void READMIDTask(void* pvParameters) {
     TS_FMGOpenParam* pstOpen = (TS_FMGOpenParam*)pstSendReq->ucParam;
 
     // ファイルデータ取得要求準備
-    TS_FMGReadParam* pstRead = (TS_FMGReadParam*)pstRecvReq->ucParam;
+    TS_FMGReadParam* pstRead = (TS_FMGReadParam*)pstSendReq->ucParam;
 
     // SLD要求準備
     pstSendReq->unReqType = SLD_TURN_ON;
@@ -86,6 +86,7 @@ void READMIDTask(void* pvParameters) {
       switch (pstRecvReq->unReqType)
       {
         case READMID_START:/* 再生開始 */
+          USBSerial.println("READMID_START request");
           switch (stTaskParam.ucState)
           {
             case ST_IDLE:

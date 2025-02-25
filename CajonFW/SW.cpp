@@ -17,6 +17,7 @@
 /******** macro  ***** */
 #define LONG_PUSH_TIME  1000   // 長押し判定時間(msec)
 #define SW_INVALID_TIME 100     // 無効時間(msec)
+#define DEBOUNCE_DELAY 500  // デバウンス時間 (ミリ秒) 　ひとまずかなり長め
 // #define SW_DEBUG
 
 /******** global variable  ***** */
@@ -30,6 +31,8 @@ TS_SWParam stSWParam[4] =
 
 char Filename[] = "senbonzakura.mid";
 
+volatile unsigned long lastInterruptTime = 0; // チャタリング対策
+
 /******** function declaration ***** */
 void IRAM_ATTR SW1Interrupt();      // SW1の割り込み
 void IRAM_ATTR SW2Interrupt();      // SW2の割り込み
@@ -41,24 +44,26 @@ void IRAM_ATTR SW4Interrupt();      // SW4の割り込み
 void SWInit(void) {
 
   // 割り込み設定: SDカードの挿抜を監視
-  attachInterrupt(digitalPinToInterrupt(PIN_SW1), SW1Interrupt, CHANGE);
+  attachInterrupt(digitalPinToInterrupt(PIN_SW1), SW1Interrupt, FALLING);
 
   // 割り込み設定: SDカードの挿抜を監視
-  attachInterrupt(digitalPinToInterrupt(PIN_SW2), SW2Interrupt, CHANGE);
+  attachInterrupt(digitalPinToInterrupt(PIN_SW2), SW2Interrupt, FALLING);
 
   // 割り込み設定: SDカードの挿抜を監視
-  attachInterrupt(digitalPinToInterrupt(PIN_SW3), SW3Interrupt, CHANGE);
+  attachInterrupt(digitalPinToInterrupt(PIN_SW3), SW3Interrupt, FALLING);
 
   // 割り込み設定: SDカードの挿抜を監視
-  attachInterrupt(digitalPinToInterrupt(PIN_SW4), SW4Interrupt, CHANGE);
+  attachInterrupt(digitalPinToInterrupt(PIN_SW4), SW4Interrupt, FALLING);
 
 }
 
 void SWInteruptProc(TS_SWParam* pstParam, uint32_t ulSWPin, uint32_t ulCh)
 {
+  // いったん、一曲再生を優先するため、長押し判定はコメントアウト。最低限の処理に絞る。(Hirose)
+  #if 0
   portBASE_TYPE xHigherPriorityTaskWoken; 
   xHigherPriorityTaskWoken = pdFALSE;
-  uint8_t ucSendReq[REQ_QUE_SIZE];
+  uint8_t ucSendReq[REQ_QUE_SIZE] = { 0 };
   TS_Req* pstSendReq = (TS_Req*)ucSendReq;
   if (digitalRead(ulSWPin) == HIGH) {
     // ボタンが離れた
@@ -119,26 +124,61 @@ void SWInteruptProc(TS_SWParam* pstParam, uint32_t ulSWPin, uint32_t ulCh)
       pstParam->bSWFlag = true;
     }
   }
+
+  #endif
+
+  uint8_t ucSendReq[REQ_QUE_SIZE] = { 0 };
+  TS_Req* pstSendReq = (TS_Req*)ucSendReq;
+  portBASE_TYPE xHigherPriorityTaskWoken; 
+  xHigherPriorityTaskWoken = pdFALSE;
+
+  pstSendReq->unReqType = READMID_START;
+  TS_READMIDStartParam* pstREADParam = (TS_READMIDStartParam*)pstSendReq->ucParam;
+  memcpy(pstREADParam->ucFileName,Filename, sizeof(Filename));
+  xQueueSendFromISR(g_pstREADMIDQueue, pstSendReq, &xHigherPriorityTaskWoken);
 }
 
 
 // 割り込みサービスルーチン
 void IRAM_ATTR SW1Interrupt() {
-  TS_SWParam* pstParam = &stSWParam[0];
-  SWInteruptProc(pstParam, PIN_SW1, 1);
+  unsigned long interruptTime = millis();
+  // デバウンス処理
+  if (interruptTime - lastInterruptTime > DEBOUNCE_DELAY) {
+    TS_SWParam* pstParam = &stSWParam[0];
+    SWInteruptProc(pstParam, PIN_SW1, 1);
+    lastInterruptTime = interruptTime;
+  }
 }
+
 // 割り込みサービスルーチン
 void IRAM_ATTR SW2Interrupt() {
-  TS_SWParam* pstParam = &stSWParam[1];
-  SWInteruptProc(pstParam, PIN_SW2, 2);
+  unsigned long interruptTime = millis();
+  // デバウンス処理
+  if (interruptTime - lastInterruptTime > DEBOUNCE_DELAY) {
+    TS_SWParam* pstParam = &stSWParam[1];
+    SWInteruptProc(pstParam, PIN_SW2, 2);
+    lastInterruptTime = interruptTime;
+  }
 }
+
 // 割り込みサービスルーチン
 void IRAM_ATTR SW3Interrupt() {
-  TS_SWParam* pstParam = &stSWParam[2];
-  SWInteruptProc(pstParam, PIN_SW3, 3);
+  unsigned long interruptTime = millis();
+  // デバウンス処理
+  if (interruptTime - lastInterruptTime > DEBOUNCE_DELAY) {
+    TS_SWParam* pstParam = &stSWParam[2];
+    SWInteruptProc(pstParam, PIN_SW3, 3);
+    lastInterruptTime = interruptTime;
+  }
 }
+
 // 割り込みサービスルーチン
 void IRAM_ATTR SW4Interrupt() {
-  TS_SWParam* pstParam = &stSWParam[3];
-  SWInteruptProc(pstParam, PIN_SW4, 4);
+  unsigned long interruptTime = millis();
+  // デバウンス処理
+  if (interruptTime - lastInterruptTime > DEBOUNCE_DELAY) {
+    TS_SWParam* pstParam = &stSWParam[3];
+    SWInteruptProc(pstParam, PIN_SW4, 4);
+    lastInterruptTime = interruptTime;
+  }
 }

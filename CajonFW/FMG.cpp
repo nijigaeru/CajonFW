@@ -43,17 +43,19 @@ void listDir(SdFat &SD, const char *dirname, uint8_t levels, uint8_t indent);
 /************************** */
 // ファイル管理タスク
 void FMGTask(void* pvParameters) {
+  // キューの作成
+  g_pstFMGQueue = xQueueCreate(REQ_QUE_NUM, REQ_QUE_SIZE);
+
   // SDカードの挿入検出ピンの設定（入力として、プルアップ抵抗）
   pinMode(PIN_SD_DET, INPUT);
   // 割り込み設定: SDカードの挿抜を監視
-  attachInterrupt(digitalPinToInterrupt(PIN_SD_DET), SDDetInterrupt, CHANGE);
+  // なぜかこのattachInterruptがあると、ソフトがリセットを繰り返すような振る舞いをするのでコメントアウト(Hirose)
+  // attachInterrupt(digitalPinToInterrupt(PIN_SD_DET), SDDetInterrupt, CHANGE);
 
   SPI.begin(PIN_SD_CLK,PIN_SD_D0,PIN_SD_CMD,PIN_SD_D3);
 
-  // キューの作成
-  g_pstFMGQueue = xQueueCreate(REQ_QUE_NUM, REQ_QUE_SIZE);
   if (g_pstFMGQueue == NULL) {
-    Serial.println("Failed to create queue.");
+    USBSerial.println("Failed to create queue.");
     return;
   }
   if (digitalRead(PIN_SD_DET) == LOW) {
@@ -75,28 +77,28 @@ void FMGTask(void* pvParameters) {
     if (xQueueReceive(g_pstFMGQueue, pstRecvReq, portMAX_DELAY) == pdPASS) {
       switch (pstRecvReq->unReqType) {
         case FMG_SD_SET:
-          Serial.println("SD card inserted.");
+          USBSerial.println("SD card inserted.");
           // SDカードの初期化
           if (SD.begin(SD_CONFIG)) {
             listDir(SD, "/", 0, 0);
             
             // .htmlファイルのリストを表示
-            Serial.println("\n.html files:");
+            USBSerial.println("\n.html files:");
             for (const auto& file : htmlFiles) {
-              Serial.println(file);
+              USBSerial.println(file);
             }
 
             // .midファイルのリストを表示
-            Serial.println("\n.mid files:");
+            USBSerial.println("\n.mid files:");
             for (const auto& file : midFiles) {
-              Serial.println(file);
+              USBSerial.println(file);
             }
           } else {
-            Serial.println("SD card initialization failed!");
+            USBSerial.println("SD card initialization failed!");
           }
           break;
         case FMG_SD_CLR:
-          Serial.println("SD card removed.");
+          USBSerial.println("SD card removed.");
           SD.end();
           htmlFiles.clear();
           midFiles.clear();
@@ -106,11 +108,12 @@ void FMGTask(void* pvParameters) {
           TS_FMGOpenParam* pstOpen = (TS_FMGOpenParam*)pstRecvReq->ucParam;
           g_file = SD.open(pstOpen->ucFileName, O_READ);
           if (g_file) {
+            USBSerial.println("Success to open file.");
             pstSendReq->unReqType = FMG_OPEN_ANS;
             pstSendReq->unError = 0;
             xQueueSend(pstRecvReq->pstAnsQue, pstSendReq, 100);
           } else {
-            Serial.println("Failed to open file for reading.");
+            USBSerial.println("Failed to open file for reading.");
             pstSendReq->unReqType = FMG_OPEN_ANS;
             pstSendReq->unError = (0xFFFF);
             xQueueSend(pstRecvReq->pstAnsQue, pstSendReq, 100);
@@ -122,16 +125,16 @@ void FMGTask(void* pvParameters) {
           TS_FMGReadParam* pstRead = (TS_FMGReadParam*)pstRecvReq->ucParam;
           if (g_file) {
             size_t bytesRead = g_file.read(pstRead->pucBuffer, pstRead->ulLength);
-            Serial.print("Read ");
-            Serial.print(bytesRead);
-            Serial.println(" bytes from file.");
+            USBSerial.print("Read ");
+            USBSerial.print(bytesRead);
+            USBSerial.println(" bytes from file.");
             pstSendReq->unReqType = FMG_READ_ANS;
             pstSendReq->unError = 0;
             TS_FMGReadAns* pstReadAns  = ((TS_FMGReadAns*)pstSendReq->ucParam);
             pstReadAns->ulLength = bytesRead;
             xQueueSend(pstRecvReq->pstAnsQue, pstSendReq, 100);
           } else {
-            Serial.println("Failed to open file for reading.");
+            USBSerial.println("Failed to open file for reading.");
             pstSendReq->unReqType = FMG_READ_ANS;
             pstSendReq->unError = (0xFFFF);
             xQueueSend(pstRecvReq->pstAnsQue, pstSendReq, 100);
@@ -142,7 +145,7 @@ void FMGTask(void* pvParameters) {
         {
           if (g_file) {
             g_file.close();
-            Serial.print("Close ");
+            USBSerial.print("Close ");
           }
           pstSendReq->unReqType = FMG_CLOSE_ANS;
           pstSendReq->unError = (0);
@@ -183,32 +186,32 @@ void IRAM_ATTR SDDetInterrupt() {
 void listDir(SdFat &sd, const char *dirname, uint8_t levels, uint8_t indent) {
   FsFile root = sd.open(dirname);
   if (!root) {
-    Serial.println("Failed to open directory");
+    USBSerial.println("Failed to open directory");
     return;
   }
   if (!root.isDirectory()) {
-    Serial.println("Not a directory");
+    USBSerial.println("Not a directory");
     return;
   }
   FsFile file = root.openNextFile();
   char nameBuffer[128]; // ファイル名を格納するバッファ
   while (file) {
     for (uint8_t i = 0; i < indent; i++) {
-      Serial.print("  ");
+      USBSerial.print("  ");
     }
     if (file.isDirectory()) {
       file.getName(nameBuffer, sizeof(nameBuffer));
-      Serial.print("|-- ");
-      Serial.println(nameBuffer);
+      USBSerial.print("|-- ");
+      USBSerial.println(nameBuffer);
       if (levels) {
         listDir(sd, nameBuffer, levels - 1, indent + 1);
       }
     } else {
       file.getName(nameBuffer, sizeof(nameBuffer));
-      Serial.print("|-- ");
-      Serial.print(nameBuffer);
-      Serial.print("\tSIZE: ");
-      Serial.println(file.fileSize());
+      USBSerial.print("|-- ");
+      USBSerial.print(nameBuffer);
+      USBSerial.print("\tSIZE: ");
+      USBSerial.println(file.fileSize());
 
       // 拡張子をチェックしてリストに追加
       String fileName = String(nameBuffer); // char配列をStringに変換
