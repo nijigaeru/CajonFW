@@ -11,6 +11,8 @@
 QueueHandle_t g_pstSLDQueue[SLD_NUM];
 bool g_ulSLDInitFlg[SLD_NUM] = {false};
 uint8_t fetPins[] = { PIN_FET1, PIN_FET2, PIN_FET3, PIN_FET4, PIN_FET5, PIN_FET6, PIN_FET7, PIN_FET8 };
+uint32_t g_ulBeginDelay[] = { 30, 30, 30, 30, 10, 30, 30, 30 };
+uint8_t g_ucMinPower[] = { 150, 150, 150, 150, 150, 150, 150, 150 };
 uint32_t g_ulFetCount = 1;
 const double  PWM_Hz = 2000;   // PWM周波数
 const uint8_t PWM_level = 8; // PWM分解能 16bit(1～256)
@@ -53,9 +55,11 @@ void SLDTask(void* pvParameters) {
     TS_Req* pstRecvReq = (TS_Req*)ucRecvReq;
     if (xQueueReceive(g_pstSLDQueue[ucFetCh-1], pstRecvReq, portMAX_DELAY) == pdPASS) {
       if (pstRecvReq->unReqType == SLD_TURN_ON) {
+        // ちょっと待つ
+        vTaskDelay(pdMS_TO_TICKS(g_ulBeginDelay[ucFetCh-1]));
         // SLDをONにする
         TS_SLDOnParam* pstSLDOnParam = (TS_SLDOnParam*)pstRecvReq->ucParam;
-        ledcWrite(ucFetCh,pstSLDOnParam->ucPower/2);
+        ledcWrite(ucFetCh, g_ucMinPower[ucFetCh-1] + (uint32_t)(255 - g_ucMinPower[ucFetCh-1]) * pstSLDOnParam->ucPower / 127);
         // USBSerial.print("SLD(");
         // USBSerial.print(ucFetCh);
         // USBSerial.print("),power(");

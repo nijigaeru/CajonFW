@@ -496,7 +496,7 @@ void READMIDTask(void* pvParameters) {
                 {
                   ucMidiScale          = (( stTaskParam.ulCheckBuf >> 8 ) & 0x000000FF ); // MIDI音階 1B
                   ucMidiVelocity       = stTaskParam.ulCheckBuf & 0x000000FF;             // MIDIベロシティ 1B
-                  pstSLDParam->ucPower = ucMidiVelocity;                                  // ベロシティ格納 0~255
+                  pstSLDParam->ucPower = ucMidiVelocity;                                  // ベロシティ(0~127)
                   stTaskParam.ucState  = ST_READ_TRACK_EVENT_MIDI_NOTE;
                 }
                 else
