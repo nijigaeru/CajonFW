@@ -78,7 +78,7 @@ void SWInteruptProc(TS_SWParam* pstParam, uint32_t ulSWPin, uint32_t ulCh)
         pstSendReq->unReqType = pstParam->unLongPushReq;
         TS_SLDOnParam* pstSLDParam = (TS_SLDOnParam*)pstSendReq->ucParam;
         //pstSLDParam->ucPower = 255;
-        pstSLDParam->ucPower = (uint8_t)(32*ulCh-1);
+        pstSLDParam->ucPower = (uint8_t)(16*ulCh+127);
         xQueueSendFromISR(*(pstParam->pstLongQue), pstSendReq, &xHigherPriorityTaskWoken);
         pstParam->xTimeNow = 0;
         pstParam->bSWFlag = false;
@@ -98,7 +98,7 @@ void SWInteruptProc(TS_SWParam* pstParam, uint32_t ulSWPin, uint32_t ulCh)
         pstSendReq->unReqType = pstParam->unShortPushReq;
         TS_SLDOnParam* pstSLDParam = (TS_SLDOnParam*)pstSendReq->ucParam;
         // pstSLDParam->ucPower = 255;
-        pstSLDParam->ucPower = (uint8_t)(32*ulCh-1+128);
+        pstSLDParam->ucPower = (uint8_t)(16*ulCh+127);
         xQueueSendFromISR(*(pstParam->pstShortQue), pstSendReq, &xHigherPriorityTaskWoken);
         pstParam->xTimeNow = 0;
         pstParam->bSWFlag = false;

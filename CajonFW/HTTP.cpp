@@ -18,71 +18,87 @@ bool bWifiConncet = false;
 
 /************************** */
 // HTTPタスク
-
 void HTTTPTask(void* pvParameters){
-  Serial.begin(115200);
-  WiFi.begin(ssid, password);
+  connectToWiFi();
 
-  while (WiFi.status() != WL_CONNECTED) {
-    delay(1000);
-    Serial.println("Connecting to WiFi...");
-  }
-
-  Serial.println("Connected to WiFi");
-
-  server.on("/", HTTP_GET, [](AsyncWebServerRequest *request){
-    request->send_P(200, "text/html", htmlPage);
-  });
-
-  server.on("/prevTrack", HTTP_GET, [](AsyncWebServerRequest *request){
-    Serial.println("Previous Track");
-    request->send(200, "text/plain", "Previous Track");
-  });
-
-  server.on("/startTrack", HTTP_GET, [](AsyncWebServerRequest *request){
-    Serial.println("Start Track");
-    request->send(200, "text/plain", "Start Track");
-  });
-
-  server.on("/nextTrack", HTTP_GET, [](AsyncWebServerRequest *request){
-    Serial.println("Next Track");
-    request->send(200, "text/plain", "Next Track");
-  });
-
-  server.on("/stopTrack", HTTP_GET, [](AsyncWebServerRequest *request){
-    Serial.println("Stop Track");
-    request->send(200, "text/plain", "Stop Track");
-  });
-
-  server.on("/playTrack", HTTP_GET, [](AsyncWebServerRequest *request){
-    String trackName;
-    if (request->hasParam("name")) {
-      trackName = request->getParam("name")->value();
-      Serial.println("Play " + trackName);
-    }
-    request->send(200, "text/plain", "Play " + trackName);
-  });
-
-  server.on("/seek", HTTP_GET, [](AsyncWebServerRequest *request){
-    String value;
-    if (request->hasParam("value")) {
-      value = request->getParam("value")->value();
-      Serial.println("Seek to: " + value);
-    }
-    request->send(200, "text/plain", "Seek to: " + value);
-  });
+  server.on("/", handleInitial);
+  server.on("/playlist.html", handlePlaylist);
+  server.on("/prevTrack", handlePrevTrack);
+  server.on("/startTrack", handleStartTrack);
+  server.on("/nextTrack", handleNextTrack);
+  server.on("/stopTrack", handleStopTrack);
+  server.on("/playTrack", handlePlayTrack);
+  server.on("/seek", handleSeek);
 
   server.begin();
+  Serial.println("HTTP server started");
   
   while(1)
   {
-    if ((WiFi.status() == WL_CONNECTED) && ( !bWifiConncet ))
-    {
-        
+    if (WiFi.status() != WL_CONNECTED) {
+      Serial.println("WiFi disconnected. Reconnecting...");
+      server.stop();
+      connectToWiFi();
+      server.begin();
+      Serial.println("HTTP server restarted");
     }
-    else if ((WiFi.status() != WL_CONNECTED) && ( bWifiConncet ))
-    {
-        
-    }
+    server.handleClient();
   }
 }
+
+void handleInitial() {
+  server.send_P(200, "text/html", initialHtml);
+}
+
+void handlePlaylist() {
+  server.send_P(200, "text/html", playlistHtml);
+}
+
+void handlePrevTrack() {
+  // コールバック処理
+  Serial.println("Previous track requested");
+  server.send(200, "text/plain", "Previous track");
+}
+
+void handleStartTrack() {
+  // コールバック処理
+  Serial.println("Start track requested");
+  server.send(200, "text/plain", "Start track");
+}
+
+void handleNextTrack() {
+  // コールバック処理
+  Serial.println("Next track requested");
+  server.send(200, "text/plain", "Next track");
+}
+
+void handleStopTrack() {
+  // コールバック処理
+  Serial.println("Stop track requested");
+  server.send(200, "text/plain", "Stop track");
+}
+
+void handlePlayTrack() {
+  String trackName = server.arg("name");
+  // コールバック処理
+  Serial.println("Play track requested: " + trackName);
+  server.send(200, "text/plain", "Play track: " + trackName);
+}
+
+void handleSeek() {
+  String value = server.arg("value");
+  // コールバック処理
+  Serial.println("Seek requested: " + value);
+  server.send(200, "text/plain", "Seek: " + value);
+}
+
+void connectToWiFi() {
+  Serial.println("Connecting to WiFi...");
+  WiFi.begin(ssid, password);
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(1000);
+    Serial.print(".");
+  }
+  Serial.println("\nConnected to WiFi");
+}
+
