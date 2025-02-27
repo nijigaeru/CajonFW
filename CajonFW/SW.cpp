@@ -29,7 +29,8 @@ TS_SWParam stSWParam[4] =
   {SLD_TURN_ON, &g_pstSLDQueue[3], SLD_TURN_ON, &g_pstSLDQueue[7], 0, false},
 };
 
-char Filename[] = "senbonzakura.mid";
+// char Filename[] = "senbonzakura.mid";
+char Filename[] = "senbon_only6drams_001.mid";
 
 volatile unsigned long lastInterruptTime = 0; // チャタリング対策
 
