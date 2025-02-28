@@ -64,6 +64,7 @@ void READMIDTask(void* pvParameters) {
   uint32_t ulSysExLen = 0;
   uint8_t  ucHasReadData = 0;
   uint32_t ulReadData = 0;
+  uint8_t  ucSLDOn[SLD_NUM] = {0};
    
   // 内部構造帯リセット
   ResetStructProc ( &stTaskParam );
@@ -374,6 +375,18 @@ void READMIDTask(void* pvParameters) {
               case ST_READ_TRACK_WAIT_DELTA         : // デルタタイム待機
                 if (ulDeltaTime != 0)
                 {
+                  // ここでまとめて音を鳴らす。
+                  for (size_t i = 0; i < SLD_NUM; ++i)
+                  {
+                    if (ucSLDOn[i] != 0)
+                    {
+                      pstSendReq->unReqType = SLD_TURN_ON;
+                      pstSLDParam->ucPower = ucMidiVelocity;
+                      xQueueSend(g_pstSLDQueue[i], pstSendReq, 100);
+                      ucSLDOn[i] = 0;
+                    }
+                  }
+
                   if ( ucScaleMode == TIMESCALE_MODE_FLAME )   // 何分何秒何フレーム
                   {
                     // こちらのモードはメジャーではないため一旦同じ実装とする. 
@@ -644,8 +657,6 @@ void READMIDTask(void* pvParameters) {
                   }
                   ucMidiScale          = (( ulThisData >> 8 ) & 0x000000FF ); // MIDI音階 1B
                   ucMidiVelocity       = (ulThisData & 0x000000FF);             // MIDIベロシティ 1B
-                  pstSendReq->unReqType = SLD_TURN_ON;
-                  pstSLDParam->ucPower = ucMidiVelocity;                                  // ベロシティ(0~127)
                   
                   // ドラムのみ再生
                   if ((ucMidiEvent & 0x0F) == 0x09)
@@ -654,27 +665,27 @@ void READMIDTask(void* pvParameters) {
                     // USBSerial.println(ucMidiScale);
                     if ( ucMidiScale == 49 ) // Crash Cymbal 1
                     {
-                      xQueueSend( g_pstSLDQueue[5], pstSendReq, 100 ); // シンバル
+                      ucSLDOn[6] = ucMidiVelocity; // シンバル
                     }
                     else if ( ucMidiScale == 46 ) // Open Hi-Hat
                     {
-                      xQueueSend( g_pstSLDQueue[4], pstSendReq, 100 ); // タンバリン 
+                      ucSLDOn[4] = ucMidiVelocity; // タンバリン
                     }
                     else if ( ucMidiScale == 42 ) // Closed Hi-Hat
                     {
-                      xQueueSend( g_pstSLDQueue[6], pstSendReq, 100 ); // 円盤 
+                      ucSLDOn[5] = ucMidiVelocity; // 円盤
                     }
                     else if ( ucMidiScale == 41 ) // Low Floor Tom
                     {
-                      xQueueSend( g_pstSLDQueue[1], pstSendReq, 100 ); // 打面（上）
+                      ucSLDOn[1] = ucMidiVelocity; // 打面（上）
                     }
                     else if ( ucMidiScale == 40 ) // Electric Snare
                     {
-                      xQueueSend( g_pstSLDQueue[2], pstSendReq, 100 ); // 打面（角）
+                      ucSLDOn[2] = ucMidiVelocity; // 打面（角）
                     }
                     else if ( ucMidiScale == 36 ) // Bass Drum 1
                     {
-                      xQueueSend( g_pstSLDQueue[0], pstSendReq, 100 ); // 打面（中央）
+                      ucSLDOn[0] = ucMidiVelocity; // 打面（中央）
                     }
                     else
                     {
