@@ -62,6 +62,7 @@ void READMIDTask(void* pvParameters) {
   // 制御用
   uint8_t  ucExtraSkip = 0;
   uint32_t ulSysExLen = 0;
+  uint8_t  ucHasReadData = 0;
   uint32_t ulReadData = 0;
    
   // 内部構造帯リセット
@@ -421,7 +422,7 @@ void READMIDTask(void* pvParameters) {
                 if ( ReadDataProc ( &stTaskParam,1) == RET_OK )
                 {
                   ulTotalEventNum += 1;
-                  // vTaskDelay(pdMS_TO_TICKS(200));  // ログ出すために 
+                  // vTaskDelay(pdMS_TO_TICKS(100));  // ログ出すために 
                   if (( stTaskParam.ulCheckBuf & 0x000000FF ) == 0xF0 ) // SysExイベント
                   {
                     // USBSerial.println("MIDI SysEx event F0.");
@@ -600,11 +601,13 @@ void READMIDTask(void* pvParameters) {
                 if ((( stTaskParam.ulCheckBuf >> 7 ) & 0x000000FF ) == 1 )  // MSBがLの場合, 前のイベントを引き継ぎ
                 {
                   ucMidiEvent = ( stTaskParam.ulCheckBuf & 0x000000FF );  // イベント変更
+                  ucHasReadData = 0;
                   ulReadData = 0;
                 }
                 else
                 {
                   ucMidiEvent = ucMidiEvent;  // 前のイベントを引き継ぎ
+                  ucHasReadData = 1;
                   ulReadData = stTaskParam.ulCheckBuf; // 今読んだデータは次で使う。
                 }
 
@@ -613,7 +616,7 @@ void READMIDTask(void* pvParameters) {
                 // ノートオン
                 if (( ucMidiEvent & 0xF0 ) == 0x90 ) // ノートオン
                 {
-                  USBSerial.println("MIDI note on event.");
+                  // USBSerial.println("MIDI note on.");
                   stTaskParam.ucState = ST_READ_TRACK_EVENT_MIDI_NOTE;
                 }
                 // 他の2byteイベント
@@ -623,8 +626,12 @@ void READMIDTask(void* pvParameters) {
                   (( ucMidiEvent & 0xF0 ) == 0xB0 ) ||
                   (( ucMidiEvent & 0xF0 ) == 0xE0 ) )
                 {
-                  USBSerial.println("MIDI other event 2.");
-                  ucMetaLength = (ulReadData ? 1 : 2);
+                  // if (( ucMidiEvent & 0xF0 ) == 0x80 ) {
+                  //   USBSerial.println("MIDI note off.");
+                  // } else {
+                  //   USBSerial.println("MIDI other event 2.");
+                  // }
+                  ucMetaLength = (ucHasReadData ? 1 : 2);
                   ucExtraSkip = 0;
                   stTaskParam.ucState = ST_READ_TRACK_EVENT_META_TROUGH;
                 }
@@ -633,8 +640,8 @@ void READMIDTask(void* pvParameters) {
                   (( ucMidiEvent & 0xF0 ) == 0xC0 ) ||
                   (( ucMidiEvent & 0xF0 ) == 0xD0 ) )
                 {
-                  USBSerial.println("MIDI other event 1.");
-                  if (ulReadData)
+                  // USBSerial.println("MIDI other event 1.");
+                  if (ucHasReadData)
                   {
                     // よみ飛ばす必要なし
                     stTaskParam.ucState = ST_READ_TRACK_DELTA; // 次のイベントを読む
@@ -654,18 +661,19 @@ void READMIDTask(void* pvParameters) {
                 break;
 
               case ST_READ_TRACK_EVENT_MIDI_NOTE    : // MIDIイベントノーツ処理
-                if ( ReadDataProc (&stTaskParam,(ulReadData ? 1 : 2)) == RET_OK )
+                if ( ReadDataProc (&stTaskParam,(ucHasReadData ? 1 : 2)) == RET_OK )
                 {
-                  if (ulReadData)
+                  uint32_t ulThisData = 0;
+                  if (ucHasReadData)
                   {
-                    ulReadData = (ulReadData << 8) | stTaskParam.ulCheckBuf;
+                    ulThisData = (ulReadData << 8) | stTaskParam.ulCheckBuf;
                   }
                   else
                   {
-                    ulReadData = stTaskParam.ulCheckBuf;
+                    ulThisData = stTaskParam.ulCheckBuf;
                   }
-                  ucMidiScale          = (( ulReadData >> 8 ) & 0x000000FF ); // MIDI音階 1B
-                  ucMidiVelocity       = (ulReadData & 0x000000FF);             // MIDIベロシティ 1B
+                  ucMidiScale          = (( ulThisData >> 8 ) & 0x000000FF ); // MIDI音階 1B
+                  ucMidiVelocity       = (ulThisData & 0x000000FF);             // MIDIベロシティ 1B
                   pstSendReq->unReqType = SLD_TURN_ON;
                   pstSLDParam->ucPower = ucMidiVelocity;                                  // ベロシティ(0~127)
                   // stTaskParam.ucState  = ST_READ_TRACK_EVENT_MIDI_NOTE;
@@ -764,37 +772,7 @@ uint32_t ReadDataProc ( TS_READMIDSTaskParam* stTaskParam, uint8_t ucByteNum ) {
     // 要求
     uint8_t ucSendReq[REQ_QUE_SIZE];
     TS_Req* pstSendReq = (TS_Req*)ucSendReq;
-  // 残データチェック&出力
-  /*
-  if ( stTaskParam->ucCntBufHold != 0 )
-  {
-    if ( stTaskParam->ucCntBufHold == ucByteNum )  // 残データをちょうど使い切る場合
-    {
-      stTaskParam->ulCheckBuf = stTaskParam->ulBufHold; // 残データ格納
-      stTaskParam->ucCntBufHold = 0;  // 残データ数クリア
-      stTaskParam->ulBufHold = 0;  // 残データバッファクリア
-      return RET_OK;
-    }
-    else if ( stTaskParam->ucCntBufHold > ucByteNum ) // 残データが足りている場合
-    {
-      stTaskParam->ulCheckBuf = stTaskParam->ulBufHold; // 残データ格納(ビッグエンディアンになっているためそのまま格納)
-      stTaskParam->ucCntBufHold = stTaskParam->ucCntBufHold - ucByteNum;  // 残データ数減算
-      stTaskParam->ulBufHold = ( stTaskParam->ulBufHold >> (ucByteNum*8) );  // 残データバッファシフト
-      return RET_OK;
-    }
-    else  // 残データはあるが不足している場合
-    {
-      stTaskParam->ulCheckBuf = stTaskParam->ulBufHold; // 残データ格納(ビッグエンディアンになっているためそのまま格納)
-      stTaskParam->ucCntBufHold = 0;  // 残データ数クリア
-      stTaskParam->ulBufHold = 0;  // 残データバッファクリア
-      ucOutByteNum = ucOutByteNum - stTaskParam->ucCntBufHold; // 出力データ分の減算
-    }
-  }
-  else
-  {
-    // 何もしない
-  }
-*/
+
   // バッファデータチェック&出力
   if (( stTaskParam->ulNumBuf + ucOutByteNum ) < stTaskParam->ulMaxBuf )   // データが足りている場合
   {
@@ -808,34 +786,7 @@ uint32_t ReadDataProc ( TS_READMIDSTaskParam* stTaskParam, uint8_t ucByteNum ) {
     }
     return RET_OK;
   }
-  else if (( stTaskParam->ulNumBuf + ucOutByteNum ) == stTaskParam->ulMaxBuf )  // データをちょうど使い切る場合
-  {
-    // 格納
-    stTaskParam->ulCheckBuf = 0;
-    for (int i = 0; i < ucOutByteNum; i++)
-    {
-      stTaskParam->ulCheckBuf = ( stTaskParam->ulCheckBuf << 8 ) | g_ucBuffer[stTaskParam->ulNumBuf] ;  // ビッグエンディアンとして格納. 
-      stTaskParam->ulNumBuf++;
-      stTaskParam->ulCntDataRead++;
-    }
-    stTaskParam->ulNumBuf = 0;
-    stTaskParam->ulMaxBuf = 0;
-    // ファイルデータ取得要求
-    TS_FMGReadParam* pstRead = (TS_FMGReadParam*)pstSendReq->ucParam;
-    pstSendReq->unReqType = FMG_READ;
-    pstSendReq->pstAnsQue = g_pstREADMIDQueue;
-    pstSendReq->ulSize = sizeof(TS_FMGReadParam);
-    pstRead->pucBuffer = g_ucBuffer;
-    pstRead->ulLength = BUFSIZE;
-    xQueueSend(g_pstFMGQueue, pstSendReq, 100);
-    stTaskParam->ucCntReadFMG++;
-    // 現在のステートを保持. 
-    stTaskParam->ucStatePause = stTaskParam->ucState;
-    // ステートをポーズに変更. 
-    stTaskParam->ucState = ST_PAUSE_WAIT_READ;
-    return RET_OK;
-  }
-  else  // データが不足している場合 
+  else  // データがぴったりか不足している場合 
   {
     // 余ってるデータを前に詰める。
     for (size_t i = 0; i < stTaskParam->ulMaxBuf - stTaskParam->ulNumBuf; ++i)
@@ -845,15 +796,6 @@ uint32_t ReadDataProc ( TS_READMIDSTaskParam* stTaskParam, uint8_t ucByteNum ) {
     stTaskParam->ulMaxBuf = stTaskParam->ulMaxBuf - stTaskParam->ulNumBuf;
     stTaskParam->ulNumBuf = 0;
 
-    // ucOutByteNum = BUFSIZE - stTaskParam->ulNumBuf;  // 残データ数計算
-    // // 残データバッファに格納する. 
-    // stTaskParam->ulBufHold = 0;
-    // for (int i = 0; i < ucOutByteNum; i++)
-    // {
-    //   stTaskParam->ulBufHold = ( stTaskParam->ulBufHold << 8 ) | g_ucBuffer[stTaskParam->ulNumBuf] ;  // ビッグエンディアンとして格納. 
-    //   stTaskParam->ulNumBuf++;
-    //   stTaskParam->ulCntDataRead++;
-    // }
     // ファイルデータ取得要求
     TS_FMGReadParam* pstRead = (TS_FMGReadParam*)pstSendReq->ucParam;
     pstSendReq->unReqType = FMG_READ;

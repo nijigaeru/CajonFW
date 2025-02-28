@@ -125,13 +125,13 @@ void FMGTask(void* pvParameters) {
           TS_FMGReadParam* pstRead = (TS_FMGReadParam*)pstRecvReq->ucParam;
           if (g_file) {
             size_t bytesRead = g_file.read(pstRead->pucBuffer, pstRead->ulLength);
-            if (bytesRead == 0) {
-              USBSerial.println("Read End");
-            } else {
-              USBSerial.println("Read Data");
-            }
-            // USBSerial.print("Read ");
-            // USBSerial.print(bytesRead);
+            // if (bytesRead == 0) {
+            //   USBSerial.println("Read End");
+            // } else {
+            //   USBSerial.println("Read Data");
+            // }
+            USBSerial.print("Read ");
+            USBSerial.println(bytesRead);
             // USBSerial.println(" bytes from file.");
             pstSendReq->unReqType = FMG_READ_ANS;
             pstSendReq->unError = 0;
