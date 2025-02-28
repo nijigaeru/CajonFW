@@ -5,13 +5,13 @@
 #include "pinasign.h"
 
 // ソレノイド駆動時間（ミリ秒）
-#define SLD_ON_TIME 40
+#define SLD_ON_TIME 30
 
 // キューの定義
 QueueHandle_t g_pstSLDQueue[SLD_NUM];
 bool g_ulSLDInitFlg[SLD_NUM] = {false};
 uint8_t fetPins[] = { PIN_FET1, PIN_FET2, PIN_FET3, PIN_FET4, PIN_FET5, PIN_FET6, PIN_FET7, PIN_FET8 };
-uint32_t g_ulBeginDelay[] = { 30, 30, 30, 30, 10, 30, 30, 30 };
+uint32_t g_ulBeginDelay[] = { 10, 10, 10, 10, 0, 10, 10, 10 };
 uint8_t g_ucMinPower[] = { 150, 150, 150, 150, 150, 150, 150, 150 };
 uint32_t g_ulFetCount = 1;
 const double  PWM_Hz = 2000;   // PWM周波数

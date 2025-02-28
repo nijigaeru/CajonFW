@@ -150,16 +150,14 @@ void READMIDTask(void* pvParameters) {
             switch (stTaskParam.ucState)
             {
             case ST_WAIT_READ:
-              // カウンタリセット
-              // stTaskParam.ulNumBuf = 0;
+              // データ追加
               stTaskParam.ulMaxBuf += pstReadAns->ulLength;
               // リード開始
               stTaskParam.ucState  = ST_READ_HEADER_HEADER;
               break;
 
             case ST_PAUSE_WAIT_READ:
-              // カウンタリセット
-              // stTaskParam.ulNumBuf = 0;
+              // データ追加
               stTaskParam.ulMaxBuf += pstReadAns->ulLength;
               // リード再開
               stTaskParam.ucState  = stTaskParam.ucStatePause;
@@ -311,29 +309,6 @@ void READMIDTask(void* pvParameters) {
                 }
                 break;
 
-              case ST_READ_HEADER_END               : // ヘッダチャンク終了まで待機
-                //! @bug ヘッダ長は6byte固定っぽいので、ここで1byte読んでしまうと変になると思われる（hirose）
-                if ( ReadDataProc ( &stTaskParam,1) == RET_OK )
-                {
-                  if (stTaskParam.ulCntDataRead == ulLengthHeader ) // 規定数の読み出し完了
-                  {
-                    USBSerial.println("MIDI head chank end.");
-
-                    ucCntTrack = 0;                   // トラック数リセット
-                    stTaskParam.ulCntDataRead = 0;    // データ数リセット
-                    stTaskParam.ucState = ST_READ_TRACK_HEADER;
-                  }
-                  else
-                  {
-                    // 何もしない
-                  }
-                }
-                else
-                {
-                  // 何もしない
-                }
-                break;
-
               case ST_READ_TRACK_HEADER             : // トラックチャンク読み出し先頭 4B
                 if ( ReadDataProc ( &stTaskParam,4) == RET_OK )
                 {
@@ -397,22 +372,19 @@ void READMIDTask(void* pvParameters) {
                 break;
 
               case ST_READ_TRACK_WAIT_DELTA         : // デルタタイム待機
-                if ( ucScaleMode == TIMESCALE_MODE_FLAME )   // 何分何秒何フレーム
+                if (ulDeltaTime != 0)
                 {
-                  // こちらのモードはメジャーではないため一旦同じ実装とする. 
-                  ulWaitTimeMsec = ulTempBPM * ulDeltaTime / unTimeScale / 1000; // msオーダー換算
-                } 
-                else if ( ucScaleMode == TIMESCALE_MODE_BEATS ) // 何小節何拍
-                {
-                  ulWaitTimeMsec = ulTempBPM * ulDeltaTime / unTimeScale / 1000; // msオーダー換算
-                }
-                ulTotalWaitTimeMsec += ulWaitTimeMsec;
-                if ( ulWaitTimeMsec != 0 )
-                { 
-                  // USBSerial.print("MIDI file wait time:");
-                  // USBSerial.println(ulWaitTimeMsec);
+                  if ( ucScaleMode == TIMESCALE_MODE_FLAME )   // 何分何秒何フレーム
+                  {
+                    // こちらのモードはメジャーではないため一旦同じ実装とする. 
+                    ulWaitTimeMsec = ulTempBPM * ulDeltaTime / unTimeScale / 1000; // msオーダー換算
+                  } 
+                  else if ( ucScaleMode == TIMESCALE_MODE_BEATS ) // 何小節何拍
+                  {
+                    ulWaitTimeMsec = ulTempBPM * ulDeltaTime / unTimeScale / 1000; // msオーダー換算
+                  }
+                  ulTotalWaitTimeMsec += ulWaitTimeMsec;
                   vTaskDelay(pdMS_TO_TICKS(ulWaitTimeMsec));  // 待機
-                  // vTaskDelay(pdMS_TO_TICKS(ulWaitTimeMsec * 2));  // 待機
                 }
                 stTaskParam.ucState = ST_READ_TRACK_EVENT;
                 ulDeltaTime = 0;  // デルタタイムクリア
@@ -453,7 +425,6 @@ void READMIDTask(void* pvParameters) {
                   }
                   else  // 想定していないイベントは無視する.(遷移しない)
                   {
-                    vTaskDelay(pdMS_TO_TICKS(500));  // ログ出すために 
                     USBSerial.print("MIDI file unknown event:");
                     USBSerial.println(stTaskParam.ulCheckBuf);
                   }
@@ -509,7 +480,6 @@ void READMIDTask(void* pvParameters) {
                     stTaskParam.ulCntDataRead = 0;  // データ数リセット
                     if ( ucCntTrack==unTrackNum ) // 規定トラック数読み出し完了
                     {
-                      // ucCntTrack = 0; // トラック数リセット
                       stTaskParam.ucState = ST_END;
                     }
                     else
@@ -676,7 +646,6 @@ void READMIDTask(void* pvParameters) {
                   ucMidiVelocity       = (ulThisData & 0x000000FF);             // MIDIベロシティ 1B
                   pstSendReq->unReqType = SLD_TURN_ON;
                   pstSLDParam->ucPower = ucMidiVelocity;                                  // ベロシティ(0~127)
-                  // stTaskParam.ucState  = ST_READ_TRACK_EVENT_MIDI_NOTE;
                   
                   // ドラムのみ再生
                   if ((ucMidiEvent & 0x0F) == 0x09)
@@ -685,27 +654,27 @@ void READMIDTask(void* pvParameters) {
                     // USBSerial.println(ucMidiScale);
                     if ( ucMidiScale == 49 ) // Crash Cymbal 1
                     {
-                      xQueueSend( g_pstSLDQueue[0], pstSendReq, 100 );
+                      xQueueSend( g_pstSLDQueue[5], pstSendReq, 100 ); // シンバル
                     }
                     else if ( ucMidiScale == 46 ) // Open Hi-Hat
                     {
-                      xQueueSend( g_pstSLDQueue[1], pstSendReq, 100 );
+                      xQueueSend( g_pstSLDQueue[4], pstSendReq, 100 ); // タンバリン 
                     }
                     else if ( ucMidiScale == 42 ) // Closed Hi-Hat
                     {
-                      xQueueSend( g_pstSLDQueue[4], pstSendReq, 100 );
+                      xQueueSend( g_pstSLDQueue[6], pstSendReq, 100 ); // 円盤 
                     }
                     else if ( ucMidiScale == 41 ) // Low Floor Tom
                     {
-                      xQueueSend( g_pstSLDQueue[5], pstSendReq, 100 );
+                      xQueueSend( g_pstSLDQueue[1], pstSendReq, 100 ); // 打面（上）
                     }
                     else if ( ucMidiScale == 40 ) // Electric Snare
                     {
-                      xQueueSend( g_pstSLDQueue[6], pstSendReq, 100 );
+                      xQueueSend( g_pstSLDQueue[2], pstSendReq, 100 ); // 打面（角）
                     }
                     else if ( ucMidiScale == 36 ) // Bass Drum 1
                     {
-                      xQueueSend( g_pstSLDQueue[2], pstSendReq, 100 );
+                      xQueueSend( g_pstSLDQueue[0], pstSendReq, 100 ); // 打面（中央）
                     }
                     else
                     {
@@ -820,8 +789,6 @@ void ResetStructProc ( TS_READMIDSTaskParam* stTaskParam ) {
   stTaskParam->ucState          = ST_IDLE;        
   stTaskParam->ucStatePause     = ST_IDLE; 
   stTaskParam->ucStateTmp       = ST_IDLE;  
-  stTaskParam->ulBufHold        = 0;      
-  stTaskParam->ucCntBufHold     = 0;   
   stTaskParam->ulCntStartTrack  = 0;
   stTaskParam->ulCntDataRead    = 0;
   stTaskParam->ulCheckBuf       = 0;
