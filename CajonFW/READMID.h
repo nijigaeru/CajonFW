@@ -45,7 +45,6 @@ enum READMIDState {
   ST_READ_TRACK_EVENT_META_TROUGH           , // テンポイベント 無視
   ST_READ_TRACK_EVENT_META_NEXT_TRACK       , // メタイベント処理
   ST_READ_TRACK_EVENT_MIDI_STATE_1B         , // MIDIイベント先頭1B読み出し
-  ST_READ_TRACK_EVENT_MIDI_STATE_2B         , // MIDIイベント残り2B読み出し
   ST_READ_TRACK_EVENT_MIDI_NOTE             , // MIDIイベントノーツ処理
   ST_PAUSE_WAIT_READ                        , // 一時停止要求による停止中
   ST_PAUSE_REQ                              , // データリード要求応答待ちによる停止中 

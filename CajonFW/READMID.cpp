@@ -56,6 +56,8 @@ void READMIDTask(void* pvParameters) {
   uint8_t   ucMetaLength;       // テンポデータ長 1B
   uint32_t  ulTempBPM;          // テンポデータusオーダー 可変長
   uint32_t  ulWaitTimeMsec;     // 待機時間 4B
+  uint32_t  ulTotalWaitTimeMsec;     // 待機時間 4B
+  uint32_t  ulTotalEventNum;    // イベント数 4B
 
   // 制御用
   uint8_t  ucExtraSkip = 0;
@@ -98,6 +100,9 @@ void READMIDTask(void* pvParameters) {
             case ST_IDLE:
               // リセット
               ResetStructProc ( &stTaskParam );
+
+              ulTotalWaitTimeMsec = 0;
+              ulTotalEventNum = 0;
 
               // ファイルオープン要求
               pstSendReq->unReqType = FMG_OPEN;
@@ -146,7 +151,7 @@ void READMIDTask(void* pvParameters) {
             case ST_WAIT_READ:
               // カウンタリセット
               // stTaskParam.ulNumBuf = 0;
-              stTaskParam.ulMaxBuf = stTaskParam.ulNumBuf + pstReadAns->ulLength;
+              stTaskParam.ulMaxBuf += pstReadAns->ulLength;
               // リード開始
               stTaskParam.ucState  = ST_READ_HEADER_HEADER;
               break;
@@ -154,7 +159,7 @@ void READMIDTask(void* pvParameters) {
             case ST_PAUSE_WAIT_READ:
               // カウンタリセット
               // stTaskParam.ulNumBuf = 0;
-              stTaskParam.ulMaxBuf = stTaskParam.ulNumBuf + pstReadAns->ulLength;
+              stTaskParam.ulMaxBuf += pstReadAns->ulLength;
               // リード再開
               stTaskParam.ucState  = stTaskParam.ucStatePause;
               break;
@@ -216,12 +221,12 @@ void READMIDTask(void* pvParameters) {
                 {
                   if ( stTaskParam.ulCheckBuf == 0x4D546864 )
                   {
-                    // USBSerial.println("MIDI file head chank detected.");
+                    // USBSerial.println("MIDI head chank detected.");
                     stTaskParam.ucState = ST_READ_HEADER_LENGTH;
                   }
                   else
                   {
-                    USBSerial.println("MIDI file head chank not detected.");
+                    USBSerial.println("MIDI head chank not detected.");
                     // エラー処理
                     stTaskParam.ucState = ST_END;
                   }
@@ -235,8 +240,8 @@ void READMIDTask(void* pvParameters) {
               case ST_READ_HEADER_LENGTH            : // ヘッダチャンク長 4B格納
                 if ( ReadDataProc ( &stTaskParam,4) == RET_OK )
                 {
-                  USBSerial.print("MIDI file head chank length:");
-                  USBSerial.println(stTaskParam.ulCheckBuf);
+                  // USBSerial.print("MIDI file head chank length:");
+                  // USBSerial.println(stTaskParam.ulCheckBuf);
 
                   ulLengthHeader = stTaskParam.ulCheckBuf;
                   stTaskParam.ucState = ST_READ_HEADER_FORMAT;
@@ -248,11 +253,11 @@ void READMIDTask(void* pvParameters) {
                 break;
 
               case ST_READ_HEADER_FORMAT            : // フォーマット 2B
-                vTaskDelay(pdMS_TO_TICKS(100)); // for serial debug
+                // vTaskDelay(pdMS_TO_TICKS(100)); // for serial debug
                 if ( ReadDataProc ( &stTaskParam,2) == RET_OK )
                 {
-                  USBSerial.print("MIDI file format:");
-                  USBSerial.println(stTaskParam.ulCheckBuf);
+                  // USBSerial.print("MIDI file format:");
+                  // USBSerial.println(stTaskParam.ulCheckBuf);
 
                   unFileFormat = stTaskParam.ulCheckBuf;
                   stTaskParam.ucState = ST_READ_HEADER_TRACK ;
@@ -288,12 +293,12 @@ void READMIDTask(void* pvParameters) {
                   if (( unTimeScale >> 15 & 0x0001 ) == 1) // 時間分解能判定(MSBがHなら何分何秒何フレーム/Lなら何小節何拍)
                   {
                     ucScaleMode = TIMESCALE_MODE_FLAME;
-                    USBSerial.println("MIDI file time scale mode:flame");
+                    // USBSerial.println("MIDI time scale mode:flame");
                   } 
                   else 
                   {
                     ucScaleMode = TIMESCALE_MODE_BEATS;
-                    USBSerial.println("MIDI file time scale mode:beats");
+                    // USBSerial.println("MIDI time scale mode:beats");
                   }
                   unTimeScale = ( unTimeScale & 0x7FFF ); // MSBはフラグのためカット
                   // stTaskParam.ucState = ST_READ_HEADER_END;
@@ -311,7 +316,7 @@ void READMIDTask(void* pvParameters) {
                 {
                   if (stTaskParam.ulCntDataRead == ulLengthHeader ) // 規定数の読み出し完了
                   {
-                    USBSerial.println("MIDI file head chank end.");
+                    USBSerial.println("MIDI head chank end.");
 
                     ucCntTrack = 0;                   // トラック数リセット
                     stTaskParam.ulCntDataRead = 0;    // データ数リセット
@@ -333,8 +338,8 @@ void READMIDTask(void* pvParameters) {
                 {
                   if ( stTaskParam.ulCheckBuf == 0x4D54726B )
                   { 
-                    USBSerial.print("MIDI file track chank detected:");
-                    USBSerial.println(ucCntTrack);
+                    // USBSerial.print("MIDI file track chank detected:");
+                    // USBSerial.println(ucCntTrack);
 
                     ucCntTrack++; // トラック数加算
                     ucMidiEvent = 0; // イベント用バッファクリア
@@ -343,7 +348,7 @@ void READMIDTask(void* pvParameters) {
                   }
                   else
                   {
-                    USBSerial.println("MIDI file track chank not detected.");
+                    USBSerial.println("MIDI track chank not detected.");
 
                     // エラー処理
                     stTaskParam.ucState = ST_END;
@@ -358,8 +363,8 @@ void READMIDTask(void* pvParameters) {
               case ST_READ_TRACK_LENGTH             : // データ長 4B
                 if ( ReadDataProc ( &stTaskParam,4) == RET_OK )
                 {
-                  USBSerial.print("MIDI file track chank length:");
-                  USBSerial.println(stTaskParam.ulCheckBuf);
+                  // USBSerial.print("MIDI file track chank length:");
+                  // USBSerial.println(stTaskParam.ulCheckBuf);
 
                   ulLengthTrack = stTaskParam.ulCheckBuf;
                   ulDeltaTime = 0;  // デルタタイムクリア
@@ -400,33 +405,36 @@ void READMIDTask(void* pvParameters) {
                 {
                   ulWaitTimeMsec = ulTempBPM * ulDeltaTime / unTimeScale / 1000; // msオーダー換算
                 }
+                ulTotalWaitTimeMsec += ulWaitTimeMsec;
                 if ( ulWaitTimeMsec != 0 )
                 { 
                   // USBSerial.print("MIDI file wait time:");
                   // USBSerial.println(ulWaitTimeMsec);
                   vTaskDelay(pdMS_TO_TICKS(ulWaitTimeMsec));  // 待機
+                  // vTaskDelay(pdMS_TO_TICKS(ulWaitTimeMsec * 2));  // 待機
                 }
                 stTaskParam.ucState = ST_READ_TRACK_EVENT;
                 ulDeltaTime = 0;  // デルタタイムクリア
                 break;
 
               case ST_READ_TRACK_EVENT              : // イベント判定 1B
-              if ( ReadDataProc ( &stTaskParam,1) == RET_OK )
-              {
-                // vTaskDelay(pdMS_TO_TICKS(200));  // ログ出すために 
-                if (( stTaskParam.ulCheckBuf & 0x000000FF ) == 0xF0 ) // SysExイベント
+                if ( ReadDataProc ( &stTaskParam,1) == RET_OK )
                 {
-                    // USBSerial.println("MIDI file SysEx event F0.");
+                  ulTotalEventNum += 1;
+                  // vTaskDelay(pdMS_TO_TICKS(200));  // ログ出すために 
+                  if (( stTaskParam.ulCheckBuf & 0x000000FF ) == 0xF0 ) // SysExイベント
+                  {
+                    // USBSerial.println("MIDI SysEx event F0.");
                     stTaskParam.ucState = ST_READ_TRACK_EVENT_SYSEX_F0;
                   }
                   else if (( stTaskParam.ulCheckBuf & 0x000000FF ) == 0xF7 ) // SysExイベント
                   {
-                    // USBSerial.println("MIDI file SysEx event F7.");
+                    // USBSerial.println("MIDI SysEx event F7.");
                     stTaskParam.ucState = ST_READ_TRACK_EVENT_SYSEX_F7; // 次のイベントを読む
                   }
                   else if ( stTaskParam.ulCheckBuf == 0xFF ) // メタイベント処理
                   {
-                    // USBSerial.println("MIDI file meta event.");
+                    // USBSerial.println("MIDI meta event.");
                     stTaskParam.ucState = ST_READ_TRACK_EVENT_META;
                   }
                   else if (
@@ -439,21 +447,14 @@ void READMIDTask(void* pvParameters) {
                   ||(( stTaskParam.ulCheckBuf & 0x000000F0 ) == 0xE0 )
                   ||(( stTaskParam.ulCheckBuf & 0x000000FF )  < 0x80 )) // MIDIイベント処理、ランニングステータス
                   {
-                    // USBSerial.println("MIDI file MIDI event.");
+                    // USBSerial.println("MIDI MIDI event.");
                     stTaskParam.ucState = ST_READ_TRACK_EVENT_MIDI_STATE_1B;
                   }
-                  // else if ((( stTaskParam.ulCheckBuf & 0x000000F0 ) == 0x80 )||(( stTaskParam.ulCheckBuf & 0x000000F0 ) == 0x90 ))  // 
-                  // else if (( ) // ランニングステータス
-                  // {
-                  //   USBSerial.println("MIDI file running status.");
-                  //   stTaskParam.ucState = ST_READ_TRACK_EVENT_MIDI_STATE_2B;
-                  // }
                   else  // 想定していないイベントは無視する.(遷移しない)
                   {
                     vTaskDelay(pdMS_TO_TICKS(500));  // ログ出すために 
                     USBSerial.print("MIDI file unknown event:");
                     USBSerial.println(stTaskParam.ulCheckBuf);
-                    // ★適切にスキップする必要がある。
                   }
                 }
                 else
@@ -464,10 +465,6 @@ void READMIDTask(void* pvParameters) {
 
               case ST_READ_TRACK_EVENT_SYSEX_F0        : // SysExイベント処理
                 stTaskParam.ucState = ST_READ_TRACK_EVENT_SYSEX_LEN_F0;
-                // stTaskParam.ucStateTmp = ST_READ_TRACK_EVENT_META_TROUGH;
-                // ★F7が最後にあればスキップするし、そうでなければスキップしてはいけない！！
-                // ★というかF7まで詠む？
-                // ucExtraSkip = 1;
                 ulSysExLen = 0;
                 break;
 
@@ -486,6 +483,7 @@ void READMIDTask(void* pvParameters) {
                     // stTaskParam.ucState = ST_READ_TRACK_WAIT_DELTA;
                     ucMetaLength = ulSysExLen;
                     stTaskParam.ucState = ST_READ_TRACK_EVENT_META_TROUGH;
+                    // ★さらにF7が最後にあればスキップする必要があるのかも？
                     // ucExtraSkip = 1;
                     ucExtraSkip = 0;
                   }
@@ -505,7 +503,7 @@ void READMIDTask(void* pvParameters) {
                 {
                   if (( stTaskParam.ulCheckBuf & 0x000000FF ) == 0x2F ) // 終了イベント
                   {
-                    USBSerial.println("MIDI file track end end event.");
+                    USBSerial.println("MIDI meta track end.");
 
                     stTaskParam.ulCntDataRead = 0;  // データ数リセット
                     if ( ucCntTrack==unTrackNum ) // 規定トラック数読み出し完了
@@ -520,11 +518,13 @@ void READMIDTask(void* pvParameters) {
                   }
                   else if (( stTaskParam.ulCheckBuf & 0x000000FF ) == 0x51 )  // テンポイベント
                   {
+                    // USBSerial.println("MIDI meta tempo.");
                     stTaskParam.ucState = ST_READ_TRACK_EVENT_META_LENGTH;
                     stTaskParam.ucStateTmp = ST_READ_TRACK_EVENT_META_TEMPO;
                   }
                   else
                   {
+                    // USBSerial.println("MIDI meta other.");
                     stTaskParam.ucState = ST_READ_TRACK_EVENT_META_LENGTH;
                     stTaskParam.ucStateTmp = ST_READ_TRACK_EVENT_META_TROUGH; // スルー
                     ucExtraSkip = 0;
@@ -539,6 +539,7 @@ void READMIDTask(void* pvParameters) {
               case ST_READ_TRACK_EVENT_META_LENGTH:
                 if ( ReadDataProc ( &stTaskParam,1) == RET_OK)
                 {
+                  // ★可変長！！
                   ucMetaLength = stTaskParam.ulCheckBuf; // 次のメタデータ格納
                   stTaskParam.ucState = stTaskParam.ucStateTmp;
                 }
@@ -612,6 +613,7 @@ void READMIDTask(void* pvParameters) {
                 // ノートオン
                 if (( ucMidiEvent & 0xF0 ) == 0x90 ) // ノートオン
                 {
+                  USBSerial.println("MIDI note on event.");
                   stTaskParam.ucState = ST_READ_TRACK_EVENT_MIDI_NOTE;
                 }
                 // 他の2byteイベント
@@ -621,6 +623,7 @@ void READMIDTask(void* pvParameters) {
                   (( ucMidiEvent & 0xF0 ) == 0xB0 ) ||
                   (( ucMidiEvent & 0xF0 ) == 0xE0 ) )
                 {
+                  USBSerial.println("MIDI other event 2.");
                   ucMetaLength = (ulReadData ? 1 : 2);
                   ucExtraSkip = 0;
                   stTaskParam.ucState = ST_READ_TRACK_EVENT_META_TROUGH;
@@ -630,6 +633,7 @@ void READMIDTask(void* pvParameters) {
                   (( ucMidiEvent & 0xF0 ) == 0xC0 ) ||
                   (( ucMidiEvent & 0xF0 ) == 0xD0 ) )
                 {
+                  USBSerial.println("MIDI other event 1.");
                   if (ulReadData)
                   {
                     // よみ飛ばす必要なし
@@ -649,10 +653,6 @@ void READMIDTask(void* pvParameters) {
                 }
                 break;
 
-              case ST_READ_TRACK_EVENT_MIDI_STATE_2B: // MIDIイベント残り2B読み出し
-               
-                break;
-
               case ST_READ_TRACK_EVENT_MIDI_NOTE    : // MIDIイベントノーツ処理
                 if ( ReadDataProc (&stTaskParam,(ulReadData ? 1 : 2)) == RET_OK )
                 {
@@ -665,14 +665,13 @@ void READMIDTask(void* pvParameters) {
                     ulReadData = stTaskParam.ulCheckBuf;
                   }
                   ucMidiScale          = (( ulReadData >> 8 ) & 0x000000FF ); // MIDI音階 1B
-                  ucMidiVelocity       = ulReadData & 0x000000FF;             // MIDIベロシティ 1B
+                  ucMidiVelocity       = (ulReadData & 0x000000FF);             // MIDIベロシティ 1B
                   pstSendReq->unReqType = SLD_TURN_ON;
                   pstSLDParam->ucPower = ucMidiVelocity;                                  // ベロシティ(0~127)
                   // stTaskParam.ucState  = ST_READ_TRACK_EVENT_MIDI_NOTE;
                   
                   // ドラムのみ再生
-                  // if (ucMidiEvent & 0x0F == 0x09)
-                  if (ucMidiEvent == 0x99)
+                  if ((ucMidiEvent & 0x0F) == 0x09)
                   {
                     // USBSerial.print("MIDI file note:");
                     // USBSerial.println(ucMidiScale);
@@ -715,6 +714,11 @@ void READMIDTask(void* pvParameters) {
                 break;
 
                 case ST_END                           : // 終了処理
+                  // USBSerial.print("Total wait time:");
+                  // USBSerial.println(ulTotalWaitTimeMsec);
+                  USBSerial.print("Total event number:");
+                  USBSerial.println(ulTotalEventNum);
+
                   // リセット
                   ResetStructProc ( &stTaskParam );
                   // 待機状態に遷移(次の開始要求まで何もしない)
@@ -855,7 +859,7 @@ uint32_t ReadDataProc ( TS_READMIDSTaskParam* stTaskParam, uint8_t ucByteNum ) {
     pstSendReq->unReqType = FMG_READ;
     pstSendReq->pstAnsQue = g_pstREADMIDQueue;
     pstSendReq->ulSize = sizeof(TS_FMGReadParam);
-    pstRead->pucBuffer = g_ucBuffer;
+    pstRead->pucBuffer = g_ucBuffer + stTaskParam->ulMaxBuf;
     pstRead->ulLength = BUFSIZE- stTaskParam->ulMaxBuf;
     xQueueSend(g_pstFMGQueue, pstSendReq, 100);
     stTaskParam->ucCntReadFMG++;
