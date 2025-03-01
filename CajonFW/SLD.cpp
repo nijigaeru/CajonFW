@@ -4,15 +4,23 @@
 #include "SLD.h"
 #include "pinasign.h"
 
-// ソレノイド駆動時間（ミリ秒）
-#define SLD_ON_TIME 30
+// 0 : 打面（中央）
+// 1 : 打面（上）
+// 2 : 打面（角）
+// 3 : ー
+// 4 : タンバリン
+// 5 : 円盤
+// 6 : シンバル
+// 7 : ー
+
 
 // キューの定義
 QueueHandle_t g_pstSLDQueue[SLD_NUM];
 bool g_ulSLDInitFlg[SLD_NUM] = {false};
 uint8_t fetPins[] = { PIN_FET1, PIN_FET2, PIN_FET3, PIN_FET4, PIN_FET5, PIN_FET6, PIN_FET7, PIN_FET8 };
-uint32_t g_ulBeginDelay[] = { 10, 10, 10, 10, 0, 10, 10, 10 };
-uint8_t g_ucMinPower[] = { 150, 150, 150, 150, 150, 150, 150, 150 };
+uint32_t g_ulSldOnTime[] = { 10, 10, 10, 10, 10, 10, 20, 10}; // ソレノイド駆動時間（ミリ秒）
+uint32_t g_ulBeginDelay[] = { 15, 15, 15, 15, 0, 15, 5, 0 };
+uint8_t g_ucMinPower[] = { 80, 80, 80, 100, 150, 200, 230, 200 };
 uint32_t g_ulFetCount = 1;
 const double  PWM_Hz = 2000;   // PWM周波数
 const uint8_t PWM_level = 8; // PWM分解能 16bit(1～256)
@@ -66,7 +74,7 @@ void SLDTask(void* pvParameters) {
         // USBSerial.print(pstSLDOnParam->ucPower);
         // USBSerial.println(") turned ON.");
         // 一定時間待つ
-        vTaskDelay(pdMS_TO_TICKS(SLD_ON_TIME));
+        vTaskDelay(pdMS_TO_TICKS(g_ulSldOnTime[ucFetCh-1]));
         // SLDをOFFにする
         ledcWrite(ucFetCh,0);
         // USBSerial.print("SLD(");
