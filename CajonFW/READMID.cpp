@@ -663,33 +663,10 @@ void READMIDTask(void* pvParameters) {
                   {
                     // USBSerial.print("MIDI file note:");
                     // USBSerial.println(ucMidiScale);
-                    if ( ucMidiScale == 49 ) // Crash Cymbal 1
+                    uint8_t targetSld = process_drum_hit(ucMidiScale);
+                    if (targetSld < SLD_NUM)
                     {
-                      ucSLDOn[6] = ucMidiVelocity; // シンバル
-                    }
-                    else if ( ucMidiScale == 46 ) // Open Hi-Hat
-                    {
-                      ucSLDOn[4] = ucMidiVelocity; // タンバリン
-                    }
-                    else if ( ucMidiScale == 42 ) // Closed Hi-Hat
-                    {
-                      ucSLDOn[5] = ucMidiVelocity; // 円盤
-                    }
-                    else if ( ucMidiScale == 41 ) // Low Floor Tom
-                    {
-                      ucSLDOn[1] = ucMidiVelocity; // 打面（上）
-                    }
-                    else if ( ucMidiScale == 40 ) // Electric Snare
-                    {
-                      ucSLDOn[2] = ucMidiVelocity; // 打面（角）
-                    }
-                    else if ( ucMidiScale == 36 ) // Bass Drum 1
-                    {
-                      ucSLDOn[0] = ucMidiVelocity; // 打面（中央）
-                    }
-                    else
-                    {
-                      // 何もしない
+                      ucSLDOn[targetSld] = ucMidiVelocity;
                     }
                   }
                   stTaskParam.ucState = ST_READ_TRACK_DELTA; // 次のイベントを読む

@@ -30,7 +30,10 @@ TS_SWParam stSWParam[4] =
 };
 
 // char Filename[] = "senbonzakura.mid";
-char Filename[] = "senbon_only6drams_001.mid";
+char Filename_1[] = "senbon_only6drams_001.mid";
+char Filename_2[] = "papurika.mid";
+char Filename_3[] = "aruitekaerou.mid";
+char Filename_4[] = "BUMP_OF_CHICKEN_SOUVENIR.mid";
 
 volatile unsigned long lastInterruptTime = 0; // チャタリング対策
 
@@ -58,7 +61,7 @@ void SWInit(void) {
 
 }
 
-void SWInteruptProc(TS_SWParam* pstParam, uint32_t ulSWPin, uint32_t ulCh)
+void SWInteruptProc(TS_SWParam* pstParam, uint32_t ulSWPin, uint32_t ulCh, char* filename)
 {
   // いったん、一曲再生を優先するため、長押し判定はコメントアウト。最低限の処理に絞る。(Hirose)
   #if 0
@@ -128,6 +131,9 @@ void SWInteruptProc(TS_SWParam* pstParam, uint32_t ulSWPin, uint32_t ulCh)
 
   #endif
 
+  USBSerial.print("File : ");
+  USBSerial.println(filename);
+
   uint8_t ucSendReq[REQ_QUE_SIZE] = { 0 };
   TS_Req* pstSendReq = (TS_Req*)ucSendReq;
   portBASE_TYPE xHigherPriorityTaskWoken; 
@@ -135,7 +141,7 @@ void SWInteruptProc(TS_SWParam* pstParam, uint32_t ulSWPin, uint32_t ulCh)
 
   pstSendReq->unReqType = READMID_START;
   TS_READMIDStartParam* pstREADParam = (TS_READMIDStartParam*)pstSendReq->ucParam;
-  memcpy(pstREADParam->ucFileName,Filename, sizeof(Filename));
+  memcpy(pstREADParam->ucFileName,filename, strlen(filename)+1);
   xQueueSendFromISR(g_pstREADMIDQueue, pstSendReq, &xHigherPriorityTaskWoken);
 }
 
@@ -146,7 +152,7 @@ void IRAM_ATTR SW1Interrupt() {
   // デバウンス処理
   if (interruptTime - lastInterruptTime > DEBOUNCE_DELAY) {
     TS_SWParam* pstParam = &stSWParam[0];
-    SWInteruptProc(pstParam, PIN_SW1, 1);
+    SWInteruptProc(pstParam, PIN_SW1, 1, Filename_1);
     lastInterruptTime = interruptTime;
   }
 }
@@ -157,7 +163,7 @@ void IRAM_ATTR SW2Interrupt() {
   // デバウンス処理
   if (interruptTime - lastInterruptTime > DEBOUNCE_DELAY) {
     TS_SWParam* pstParam = &stSWParam[1];
-    SWInteruptProc(pstParam, PIN_SW2, 2);
+    SWInteruptProc(pstParam, PIN_SW2, 2, Filename_2);
     lastInterruptTime = interruptTime;
   }
 }
@@ -168,7 +174,7 @@ void IRAM_ATTR SW3Interrupt() {
   // デバウンス処理
   if (interruptTime - lastInterruptTime > DEBOUNCE_DELAY) {
     TS_SWParam* pstParam = &stSWParam[2];
-    SWInteruptProc(pstParam, PIN_SW3, 3);
+    SWInteruptProc(pstParam, PIN_SW3, 3, Filename_3);
     lastInterruptTime = interruptTime;
   }
 }
@@ -179,7 +185,7 @@ void IRAM_ATTR SW4Interrupt() {
   // デバウンス処理
   if (interruptTime - lastInterruptTime > DEBOUNCE_DELAY) {
     TS_SWParam* pstParam = &stSWParam[3];
-    SWInteruptProc(pstParam, PIN_SW4, 4);
+    SWInteruptProc(pstParam, PIN_SW4, 4, Filename_4);
     lastInterruptTime = interruptTime;
   }
 }
