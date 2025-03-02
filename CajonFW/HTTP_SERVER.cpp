@@ -14,7 +14,7 @@ WebServer server(80);
 
 /******** function declaration ***** */
 void HTTPTask(void* pvParameters);   //HTTPタスク
-bool bWifiConncet = false;
+bool g_bWifiConncet = false;
 void handleInitial();
 void handlePlaylist();
 void handlePrevTrack();
@@ -48,14 +48,22 @@ void HTTPTask(void* pvParameters){
   
   while(1)
   {
-    if (WiFi.status() != WL_CONNECTED) {
+    #if 0
+    if ((WiFi.status() != WL_CONNECTED)&&(g_bWifiConncet)) {
       Serial.println("WiFi disconnected. Reconnecting...");
       server.stop();
-      connectToWiFi();
+      // connectToWiFi();
       server.begin();
       Serial.println("HTTP server restarted");
+      g_bWifiConncet = false;
     }
+    else if (WiFi.status() == WL_CONNECTED)
+    {
+      g_bWifiConncet = true;
+    }
+    #endif
     server.handleClient();
+    delay(10);
   }
 }
 
