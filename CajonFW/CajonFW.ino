@@ -4,6 +4,7 @@
 #include "SLD.h"
 #include "SW.h"
 #include "READMID.h"
+#include "HTTP_SERVER.h"
 
 void setup() {
   Serial.begin(115200);
@@ -15,7 +16,7 @@ void setup() {
   //ledQueue = xQueueCreate(10, sizeof(int));
 
   // HTTPサーバータスクをCore 1で実行
-  // xTaskCreatePinnedToCore(HTTPTask, "HTTPTask", 4096, NULL, 1, NULL, 1);
+  xTaskCreatePinnedToCore(HTTPTask, "HTTPTask", 4096, NULL, 1, NULL, 1);
   // ファイル管理タスクの作成
   xTaskCreatePinnedToCore(FMGTask, "FMGTask", 2048, NULL, 1, NULL, 0);
   // ファイル管理タスクの作成

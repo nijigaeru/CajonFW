@@ -1,6 +1,6 @@
 #include <WiFi.h>
 #include <WebServer.h>
-#include "HTTP.h"
+#include "HTTP_SERVER.h"
 /******** macro *****/
 
 
@@ -15,12 +15,25 @@ WebServer server(80);
 /******** function declaration ***** */
 void HTTPTask(void* pvParameters);   //HTTPタスク
 bool bWifiConncet = false;
+void handleInitial();
+void handlePlaylist();
+void handlePrevTrack();
+void handleStartTrack();
+void handleNextTrack();
+void handleStopTrack();
+void handlePlayTrack();
+void handleSeek();
+void connectToWiFi();
 
 /************************** */
 // HTTPタスク
-void HTTTPTask(void* pvParameters){
-  connectToWiFi();
-
+void HTTPTask(void* pvParameters){
+  //connectToWiFi();
+  // アクセスポイントとして動作するように設定
+  WiFi.softAP(ssid, password);
+  IPAddress IP = WiFi.softAPIP();
+  Serial.print("AP IP address: ");
+  Serial.println(IP);
   server.on("/", handleInitial);
   server.on("/playlist.html", handlePlaylist);
   server.on("/prevTrack", handlePrevTrack);

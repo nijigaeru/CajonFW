@@ -1,8 +1,10 @@
-#ifndef _HTTP_H_
-#define _HTTP_H_
+#ifndef _HTTP_SERVER_H_
+#define _HTTP_SERVER_H_
 
 #include <queue.h>
 #include "REQ.h"
+
+extern void HTTPTask(void* pvParameters);
 
 const char initialHtml[] PROGMEM = R"rawliteral(
 <!DOCTYPE html>
