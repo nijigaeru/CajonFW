@@ -30,18 +30,20 @@ enum READMIDState {
   ST_READ_HEADER_FORMAT                     , // フォーマット 2B
   ST_READ_HEADER_TRACK                      , // トラック数 2B
   ST_READ_HEADER_TIME                       , // 時間分解能 2B
-  ST_READ_HEADER_END                        , // 分解能判定 & ヘッダチャンク終了まで待機
   ST_READ_TRACK_HEADER                      , // トラックチャンク読み出し先頭4B
   ST_READ_TRACK_LENGTH                      , // データ長 4B
   ST_READ_TRACK_DELTA                       , // デルタタイム取得 1~4B
   ST_READ_TRACK_WAIT_DELTA                  , // デルタタイム待機
   ST_READ_TRACK_EVENT                       , // イベント 1B
-  ST_READ_TRACK_EVENT_SYSEX                 , // SysExイベント処理
+  ST_READ_TRACK_EVENT_SYSEX_F0              , // SysExイベント処理
+  ST_READ_TRACK_EVENT_SYSEX_F7              , // SysExイベント処理
+  ST_READ_TRACK_EVENT_SYSEX_LEN_F0          , // SysExイベント処理
   ST_READ_TRACK_EVENT_META                  , // メタイベント処理
-  ST_READ_TRACK_EVENT_META_TEMPO_LENGTH     , // テンポデータ長読み出し
-  ST_READ_TRACK_EVENT_META_TEMPO            , // テンポイベント  
+  ST_READ_TRACK_EVENT_META_LENGTH           , // メタイベントデータ長読み出し
+  ST_READ_TRACK_EVENT_META_TEMPO            , // テンポイベント テンポ
+  ST_READ_TRACK_EVENT_META_TROUGH           , // テンポイベント 無視
+  ST_READ_TRACK_EVENT_META_NEXT_TRACK       , // メタイベント処理
   ST_READ_TRACK_EVENT_MIDI_STATE_1B         , // MIDIイベント先頭1B読み出し
-  ST_READ_TRACK_EVENT_MIDI_STATE_2B         , // MIDIイベント残り2B読み出し
   ST_READ_TRACK_EVENT_MIDI_NOTE             , // MIDIイベントノーツ処理
   ST_PAUSE_WAIT_READ                        , // 一時停止要求による停止中
   ST_PAUSE_REQ                              , // データリード要求応答待ちによる停止中 
@@ -56,10 +58,10 @@ typedef struct STagREADMIDStartParam {
 // タスク内データ構造体
 typedef struct STagREADMIDTaskParam {
   uint32_t  ulNumBuf;         // 現在のバッファ位置
+  uint32_t  ulMaxBuf;         // 今あるデータの数
   uint8_t   ucState;          // 現在のステート
   uint8_t   ucStatePause;     // ポーズ時のステート保持. 再開時に遷移する. 
-  uint32_t  ulBufHold;        // 残データ格納用変数
-  uint8_t   ucCntBufHold;     // 格納された残データ数カウント
+  uint8_t   ucStateTmp;       // 現在のステート
   uint32_t  ulCntStartTrack;  // トラックチャンク開始位置(巻き戻し時に使う)
   uint32_t  ulCntDataRead;    // 現在までの合計リードデータ数
   uint8_t   ucCntReadFMG;     // FMGへのリード要求数
