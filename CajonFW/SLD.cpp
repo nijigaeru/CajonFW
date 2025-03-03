@@ -34,8 +34,8 @@ void SLDTask(void* pvParameters) {
 
   if (g_ulSLDInitFlg[ucFetCh-1])
   {
-    USBSerial.print("SLD already initialized.");
-    USBSerial.println(ucFetCh);
+    Serial.print("SLD already initialized.");
+    Serial.println(ucFetCh);
     return;
   }
 
@@ -50,14 +50,14 @@ void SLDTask(void* pvParameters) {
   // キューの作成
   g_pstSLDQueue[ucFetCh-1] = xQueueCreate(REQ_QUE_NUM, REQ_QUE_SIZE);
   if (g_pstSLDQueue[ucFetCh-1] == NULL) {
-    USBSerial.println("Failed to create queue.");
+    Serial.println("Failed to create queue.");
     return;
   }
 
   // 初期化完了フラグ
   g_ulSLDInitFlg[ucFetCh-1] = true;
-  USBSerial.print("SLD initialized.");
-  USBSerial.println(ucFetCh);
+  Serial.print("SLD initialized.");
+  Serial.println(ucFetCh);
   while (true) {
     uint8_t ucRecvReq[REQ_QUE_SIZE];
     TS_Req* pstRecvReq = (TS_Req*)ucRecvReq;
@@ -68,18 +68,18 @@ void SLDTask(void* pvParameters) {
         // SLDをONにする
         TS_SLDOnParam* pstSLDOnParam = (TS_SLDOnParam*)pstRecvReq->ucParam;
         ledcWrite(ucFetCh, g_ucMinPower[ucFetCh-1] + (uint32_t)(255 - g_ucMinPower[ucFetCh-1]) * pstSLDOnParam->ucPower / 127);
-        // USBSerial.print("SLD(");
-        // USBSerial.print(ucFetCh);
-        // USBSerial.print("),power(");
-        // USBSerial.print(pstSLDOnParam->ucPower);
-        // USBSerial.println(") turned ON.");
+        // Serial.print("SLD(");
+        // Serial.print(ucFetCh);
+        // Serial.print("),power(");
+        // Serial.print(pstSLDOnParam->ucPower);
+        // Serial.println(") turned ON.");
         // 一定時間待つ
         vTaskDelay(pdMS_TO_TICKS(g_ulSldOnTime[ucFetCh-1]));
         // SLDをOFFにする
         ledcWrite(ucFetCh,0);
-        // USBSerial.print("SLD(");
-        // USBSerial.print(ucFetCh);
-        // USBSerial.println(") turned OFF.");
+        // Serial.print("SLD(");
+        // Serial.print(ucFetCh);
+        // Serial.println(") turned OFF.");
       }
     }
   }
@@ -155,5 +155,3 @@ uint8_t process_drum_hit(uint8_t note) {
   // 該当なし（無視）
   return 255;
 }
-
-

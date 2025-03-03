@@ -7,8 +7,8 @@
 #include "HTTP_SERVER.h"
 
 void setup() {
-  USBSerial.begin(115200);
-  USBSerial.println("setup started.");
+  Serial.begin(115200);
+  Serial.println("setup started.");
 
   // HW初期化
   HwInit();
@@ -28,7 +28,7 @@ void setup() {
   }
   SWInit();
 
-  USBSerial.println("setup finished.");
+  Serial.println("setup finished.");
 }
 
 void loop() {

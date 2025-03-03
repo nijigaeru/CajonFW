@@ -132,8 +132,8 @@ void SWInteruptProc(TS_SWParam* pstParam, uint32_t ulSWPin, uint32_t ulCh, char*
 
   #endif
 
-  USBSerial.print("File : ");
-  USBSerial.println(filename);
+  Serial.print("File : ");
+  Serial.println(filename);
 
   uint8_t ucSendReq[REQ_QUE_SIZE] = { 0 };
   TS_Req* pstSendReq = (TS_Req*)ucSendReq;

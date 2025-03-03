@@ -1,6 +1,7 @@
 #include <WiFi.h>
 #include <WebServer.h>
 #include "HTTP_SERVER.h"
+#include "READMID.h"
 /******** macro *****/
 
 
@@ -88,10 +89,9 @@ void handleStartTrack() {
   TS_Req* pstSendReq = (TS_Req*)ucSendReq;
   pstSendReq->unReqType = READMID_START;
   TS_READMIDStartParam* pstREADParam = (TS_READMIDStartParam*)pstSendReq->ucParam;
-  memcpy(pstREADParam->ucFileName,Filename, sizeof(Filename));
-  xQueueSendFrom(g_pstREADMIDQueue, pstSendReq);
+  memcpy(pstREADParam->ucFileName,Filename, 32);
+  xQueueSend(g_pstREADMIDQueue, pstSendReq, 100);
   Serial.println("Start track requested");
-  Serial.println()
   server.send(200, "text/plain", "Start track");
 }
 
@@ -105,17 +105,18 @@ void handleStopTrack() {
   // コールバック処理
   uint8_t ucSendReq[REQ_QUE_SIZE];
   TS_Req* pstSendReq = (TS_Req*)ucSendReq;
-  pstSendReq->unReqType = READMID_STOP;
-  xQueueSendFrom(g_pstREADMIDQueue, pstSendReq);
+  pstSendReq->unReqType = READMID_PAUSE;
+  xQueueSend(g_pstREADMIDQueue, pstSendReq, 100);
   Serial.println("Stop track requested");
   server.send(200, "text/plain", "Stop track");
 }
 
 void handlePlayTrack() {
-  Filename = server.arg("name");
+  String tracName = server.arg("name");
+  tracName.toCharArray(Filename, sizeof(Filename));
   // コールバック処理
-  Serial.println("Play track requested: " + trackName);
-  server.send(200, "text/plain", "Play track: " + trackName);
+  Serial.println("Play track requested: " + tracName);
+  server.send(200, "text/plain", "Play track: " + tracName);
 }
 
 void handleSeek() {
