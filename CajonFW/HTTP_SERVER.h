@@ -77,9 +77,9 @@ const char playlistHtml[] PROGMEM = R"rawliteral(
             </div>
             <div class="track-list">
                 <!-- Arduinoコード内では曲数分ループ回す? -->
-                <div class="track" onclick="playTrack('曲名1')">曲名1</div>
-                <div class="track" onclick="playTrack('曲名2')">曲名2</div>
-                <div class="track" onclick="playTrack('曲名3')">曲名3</div>
+                <div class="track" onclick="playTrack('senbonzakura.mid')">千本桜</div>
+                <div class="track" onclick="playTrack('aruitekaerou.mid')">上を向いて歩こう</div>
+                <div class="track" onclick="playTrack('papurika.mid')">パプリカ</div>
             </div>
         </div>
         <script>
@@ -115,10 +115,10 @@ const char playlistHtml[] PROGMEM = R"rawliteral(
             function startStop() {
                 let icon = document.getElementById('StartStop');
                 if (icon.innerHTML.charCodeAt(0).toString(16)==='25b6') {
-                    fetch('/stopTrack');
+                    fetch('/startTrack');
                     icon.innerHTML='&#x23F8';
                 } else {
-                    fetch('/startTrack');
+                    fetch('/stopTrack');
                     icon.innerHTML='&#x25b6';
                 }
             }

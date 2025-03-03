@@ -7,6 +7,7 @@
 /******** global variable  ***** */
 const char* ssid = "tobukaeru_Cajon"; // アクセスポイントのSSID
 const char* password = "tobukaeru_Cajon"; // アクセスポイントのパスワード
+char Filename[32];
 
 // キューの定義
 QueueHandle_t g_pstHTTPQueue;
@@ -83,7 +84,14 @@ void handlePrevTrack() {
 
 void handleStartTrack() {
   // コールバック処理
+  uint8_t ucSendReq[REQ_QUE_SIZE];
+  TS_Req* pstSendReq = (TS_Req*)ucSendReq;
+  pstSendReq->unReqType = READMID_START;
+  TS_READMIDStartParam* pstREADParam = (TS_READMIDStartParam*)pstSendReq->ucParam;
+  memcpy(pstREADParam->ucFileName,Filename, sizeof(Filename));
+  xQueueSendFrom(g_pstREADMIDQueue, pstSendReq);
   Serial.println("Start track requested");
+  Serial.println()
   server.send(200, "text/plain", "Start track");
 }
 
@@ -95,12 +103,16 @@ void handleNextTrack() {
 
 void handleStopTrack() {
   // コールバック処理
+  uint8_t ucSendReq[REQ_QUE_SIZE];
+  TS_Req* pstSendReq = (TS_Req*)ucSendReq;
+  pstSendReq->unReqType = READMID_STOP;
+  xQueueSendFrom(g_pstREADMIDQueue, pstSendReq);
   Serial.println("Stop track requested");
   server.send(200, "text/plain", "Stop track");
 }
 
 void handlePlayTrack() {
-  String trackName = server.arg("name");
+  Filename = server.arg("name");
   // コールバック処理
   Serial.println("Play track requested: " + trackName);
   server.send(200, "text/plain", "Play track: " + trackName);
@@ -122,4 +134,3 @@ void connectToWiFi() {
   }
   Serial.println("\nConnected to WiFi");
 }
-
