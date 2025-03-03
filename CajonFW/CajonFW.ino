@@ -7,7 +7,8 @@
 #include "HTTP_SERVER.h"
 
 void setup() {
-  Serial.begin(115200);
+  USBSerial.begin(115200);
+  USBSerial.println("setup started.");
 
   // HW初期化
   HwInit();
@@ -18,15 +19,16 @@ void setup() {
   // HTTPサーバータスクをCore 1で実行
   xTaskCreatePinnedToCore(HTTPTask, "HTTPTask", 4096, NULL, 1, NULL, 1);
   // ファイル管理タスクの作成
-  xTaskCreatePinnedToCore(FMGTask, "FMGTask", 2048, NULL, 1, NULL, 0);
-  // ファイル管理タスクの作成
-  xTaskCreatePinnedToCore(READMIDTask, "READMIDTask", 2048, NULL, 1, NULL, 0);
+  //! @note スタックはとりあえず少し多め。後で不要なのは減らしたほうが良いかも？
+  xTaskCreatePinnedToCore(FMGTask, "FMGTask", 1024*4, NULL, 2, NULL, 0);
+  xTaskCreatePinnedToCore(READMIDTask, "READMIDTask", 1024*4, NULL, 3, NULL, 0);
   for (uint8_t ucFetCh = 1; ucFetCh <= 8; ucFetCh++) {
     // SLD制御タスクの作成
-    xTaskCreatePinnedToCore(SLDTask, "SLDTask", 2048, NULL, 1, NULL, 0);
+    xTaskCreatePinnedToCore(SLDTask, "SLDTask", 1024*4, NULL, 1, NULL, 0);
   }
   SWInit();
 
+  USBSerial.println("setup finished.");
 }
 
 void loop() {

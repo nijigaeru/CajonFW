@@ -23,4 +23,7 @@ typedef struct StagFETRequest {
 // 初期化関数
 extern void SLDTask(void* pvParameters);
 
+extern uint8_t process_drum_hit(uint8_t note);
+
+
 #endif
