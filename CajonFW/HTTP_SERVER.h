@@ -77,7 +77,7 @@ const char playlistHtml[] PROGMEM = R"rawliteral(
             </div>
             <div class="track-list">
                 <!-- Arduinoコード内では曲数分ループ回す? -->
-                <div class="track" onclick="playTrack('senbonzakura.mid')">千本桜</div>
+                <div class="track" onclick="playTrack('Senbonzakura.mid')">千本桜</div>
                 <div class="track" onclick="playTrack('aruitekaerou.mid')">上を向いて歩こう</div>
                 <div class="track" onclick="playTrack('papurika.mid')">パプリカ</div>
             </div>
