@@ -13,7 +13,12 @@ char Filename[32];
 // キューの定義
 QueueHandle_t g_pstHTTPQueue;
 WebServer server(80);
+WiFiServer telnetServer(23); // Telnetサーバーのポート番号s
+WiFiClient telnetClient;
 
+IPAddress local_IP(192,168,4,1);
+IPAddress gateway(192,168,4,1);
+IPAddress subnet(255,255,255,0);
 /******** function declaration ***** */
 void HTTPTask(void* pvParameters);   //HTTPタスク
 bool g_bWifiConncet = false;
@@ -21,6 +26,7 @@ void handleInitial();
 void handlePlaylist();
 void handlePrevTrack();
 void handleStartTrack();
+void handlePauseTrack();
 void handleNextTrack();
 void handleStopTrack();
 void handlePlayTrack();
@@ -30,41 +36,52 @@ void connectToWiFi();
 /************************** */
 // HTTPタスク
 void HTTPTask(void* pvParameters){
-  //connectToWiFi();
   // アクセスポイントとして動作するように設定
+  WiFi.softAPConfig(local_IP, gateway, subnet);
   WiFi.softAP(ssid, password);
   IPAddress IP = WiFi.softAPIP();
   Serial.print("AP IP address: ");
   Serial.println(IP);
+
+  // HTTPサーバーの設定
   server.on("/", handleInitial);
   server.on("/playlist.html", handlePlaylist);
   server.on("/prevTrack", handlePrevTrack);
   server.on("/startTrack", handleStartTrack);
+  server.on("/pauseTrack", handlePauseTrack);
   server.on("/nextTrack", handleNextTrack);
   server.on("/stopTrack", handleStopTrack);
   server.on("/playTrack", handlePlayTrack);
   server.on("/seek", handleSeek);
 
+  // HTTPサーバーの開始
   server.begin();
   Serial.println("HTTP server started");
   
+  // Telnetサーバーの開始
+  telnetServer.begin();
+  Serial.println("Telnet server started");
+
   while(1)
   {
-    #if 0
-    if ((WiFi.status() != WL_CONNECTED)&&(g_bWifiConncet)) {
-      Serial.println("WiFi disconnected. Reconnecting...");
-      server.stop();
-      // connectToWiFi();
-      server.begin();
-      Serial.println("HTTP server restarted");
-      g_bWifiConncet = false;
-    }
-    else if (WiFi.status() == WL_CONNECTED)
-    {
-      g_bWifiConncet = true;
-    }
-    #endif
     server.handleClient();
+    // Telnetサーバーのクライアント処理
+    if (telnetServer.hasClient()) {
+      if (!telnetClient || !telnetClient.connected()) {
+        if (telnetClient) telnetClient.stop();
+        telnetClient = telnetServer.available();
+        Serial.println("New Telnet client connected");
+        telnetClient.println("Welcome to the Telnet server!");
+      } else {
+        telnetServer.available().stop();
+      }
+    }
+
+    if (telnetClient && telnetClient.connected()) {
+      if (telnetClient.available()) {
+        Serial.write(telnetClient.read());
+      }
+    }
     delay(10);
   }
 }
@@ -101,11 +118,21 @@ void handleNextTrack() {
   server.send(200, "text/plain", "Next track");
 }
 
-void handleStopTrack() {
+void handlePauseTrack() {
   // コールバック処理
   uint8_t ucSendReq[REQ_QUE_SIZE];
   TS_Req* pstSendReq = (TS_Req*)ucSendReq;
   pstSendReq->unReqType = READMID_PAUSE;
+  xQueueSend(g_pstREADMIDQueue, pstSendReq, 100);
+  Serial.println("Pause track requested");
+  server.send(200, "text/plain", "Stop track");
+}
+
+void handleStopTrack() {
+  // コールバック処理
+  uint8_t ucSendReq[REQ_QUE_SIZE];
+  TS_Req* pstSendReq = (TS_Req*)ucSendReq;
+  pstSendReq->unReqType = READMID_END;
   xQueueSend(g_pstREADMIDQueue, pstSendReq, 100);
   Serial.println("Stop track requested");
   server.send(200, "text/plain", "Stop track");
@@ -124,14 +151,4 @@ void handleSeek() {
   // コールバック処理
   Serial.println("Seek requested: " + value);
   server.send(200, "text/plain", "Seek: " + value);
-}
-
-void connectToWiFi() {
-  Serial.println("Connecting to WiFi...");
-  WiFi.begin(ssid, password);
-  while (WiFi.status() != WL_CONNECTED) {
-    delay(1000);
-    Serial.print(".");
-  }
-  Serial.println("\nConnected to WiFi");
 }

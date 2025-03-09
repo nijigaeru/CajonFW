@@ -65,15 +65,15 @@ const char playlistHtml[] PROGMEM = R"rawliteral(
                 <div class="menu-item" onclick="goToHome()">スタート画面に戻る</div>
                 <div class="menu-item">メニュー項目2</div>
             </div>
-            <div class="track-name">曲名</div>
+            <div class="track-name">千本桜</div>
             <!-- シークバー（見た目のみ） -->
             <input type="range" id="progressBar" class="progress-bar" value="0" max="100">
             <!-- コントロールボタン類 -->
             <div class="controls">
                 <button class="button-prev" onclick="prevTrack()">&#x23EE;</button>
-                <button class="button-start-stop" id="StartStop" onclick="startStop()">&#x25b6;</button>
+                <button class="button-start-pause" id="StartPause" onclick="startPause()">&#x25b6;</button>
+                <button class="button-stop" onclick="stopTrack()">&#x23F9;</button>
                 <button class="button-next" onclick="nextTrack()">&#x23ED;</button>
-                <!-- <button class="button" onclick="stopTrack()">&#x23F8;</button> -->
             </div>
             <div class="track-list">
                 <!-- Arduinoコード内では曲数分ループ回す? -->
@@ -109,16 +109,21 @@ const char playlistHtml[] PROGMEM = R"rawliteral(
                 fetch('/stopTrack');
             }
             function playTrack(trackName) {
-                fetch('/playTrack?name=' + encodeURIComponent(trackName));
+                fetch('/playTrack?name=' + encodeURIComponent(trackName))
+                  .then(response => {
+                    if (response.ok) {
+                      document.getElementById('trackName').innerText = trackName;
+                    }
+                  });
             }
             // 絵文字を文字コードで比較してオン/オフ切り替え
-            function startStop() {
-                let icon = document.getElementById('StartStop');
+            function startPause() {
+                let icon = document.getElementById('StartPause');
                 if (icon.innerHTML.charCodeAt(0).toString(16)==='25b6') {
                     fetch('/startTrack');
                     icon.innerHTML='&#x23F8';
                 } else {
-                    fetch('/stopTrack');
+                    fetch('/pauseTrack');
                     icon.innerHTML='&#x25b6';
                 }
             }
