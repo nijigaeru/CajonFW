@@ -1,5 +1,6 @@
 #include <WiFi.h>
 #include <WebServer.h>
+#include <WiFiUdp.h>
 #include "HTTP_SERVER.h"
 #include "READMID.h"
 /******** macro *****/
@@ -9,18 +10,21 @@
 const char* ssid = "tobukaeru_Cajon"; // アクセスポイントのSSID
 const char* password = "tobukaeru_Cajon"; // アクセスポイントのパスワード
 char Filename[32];
-char g_cTelnetBuffer[256];          // テルネット用バッファ
-uint32_t g_ulTelnetBufferCount;     // テルネット用バッファカウント
+char g_cUdpBuffer[256];          // UDP用バッファ
+uint32_t g_ulUdpBufferCount;     // UDP用バッファカウント
 
 // キューの定義
 QueueHandle_t g_pstHTTPQueue;
 WebServer server(80);
-WiFiServer telnetServer(23); // Telnetサーバーのポート番号s
-WiFiClient telnetClient;
+WiFiUDP udp; // UDPインスタンス
 
 IPAddress local_IP(192,168,4,1);
 IPAddress gateway(192,168,4,1);
 IPAddress subnet(255,255,255,0);
+unsigned int localUdpPort = 23; // UDPポート番号
+char incomingPacket[256]; // 受信パケット用バッファ
+char replyPacket[] = "Hi there! Got the message"; // 応答メッセージ
+
 /******** function declaration ***** */
 void HTTPTask(void* pvParameters);   //HTTPタスク
 bool g_bWifiConncet = false;
@@ -35,7 +39,7 @@ void handlePlayTrack();
 void handleSeek();
 void connectToWiFi();
 
-uint32_t TelCmdProc(TS_READMIDPlayNotsParam* pstParam, char* cBuffer, uint32_t ulSize);
+uint32_t UdpCmdProc(TS_READMIDPlayNotsParam* pstParam, char* cBuffer, uint32_t ulSize);
 
 /************************** */
 // HTTPタスク
@@ -62,49 +66,46 @@ void HTTPTask(void* pvParameters){
   server.begin();
   Serial.println("HTTP server started");
   
-  // Telnetサーバーの開始
-  telnetServer.begin();
-  Serial.println("Telnet server started");
+  // UDPの開始
+  udp.begin(localUdpPort);
+  Serial.printf("Now listening at IP %s, UDP port %d\n", IP.toString().c_str(), localUdpPort);
 
   while(1)
   {
     server.handleClient();
-    // Telnetサーバーのクライアント処理
-    if (telnetServer.hasClient()) {
-      if (!telnetClient || !telnetClient.connected()) {
-        if (telnetClient) telnetClient.stop();
-        telnetClient = telnetServer.available();
-        Serial.println("New Telnet client connected");
-        telnetClient.println("Welcome to the Telnet server!");
-      } else {
-        telnetServer.available().stop();
+    
+    int packetSize = udp.parsePacket();
+    if (packetSize) {
+      // 受信パケットの読み込み
+      int len = udp.read(incomingPacket, 255);
+      if (len > 0) {
+        incomingPacket[len] = 0;
       }
-    }
-
-    if (telnetClient && telnetClient.connected()) {
-      while  (telnetClient.available()) {
-        char bChar = telnetClient.read();;
-        Serial.write(bChar);
+      // Serial.printf("Received packet of size %d from %s:%d\n", packetSize, udp.remoteIP().toString().c_str(), udp.remotePort());
+      // Serial.printf("Packet contents: %s\n", incomingPacket);
+      
+      // 受信データを処理し、先頭の'D'を見つけるまでデータを破棄
+      for (int i = 0; i < len; i++) {
+        char bChar = incomingPacket[i];
         if (bChar == 'D')
         {
           /* バッファのクリア */
-          g_ulTelnetBufferCount =0;
-          telnetClient.flush();
+          g_ulUdpBufferCount =0;
           // バッファに詰め込む
-          g_cTelnetBuffer[g_ulTelnetBufferCount] = bChar;
-          g_ulTelnetBufferCount++;
+          g_cUdpBuffer[g_ulUdpBufferCount] = bChar;
+          g_ulUdpBufferCount++;
         }
         else if (bChar == '\r')
         {
           // バッファにスペース詰め込む(処理の共通化のため)
-          g_cTelnetBuffer[g_ulTelnetBufferCount] = ' ';
-          g_ulTelnetBufferCount++;
+          g_cUdpBuffer[g_ulUdpBufferCount] = ' ';
+          g_ulUdpBufferCount++;
           // ノーツ実行要求を送信する。
           uint8_t ucSendReq[REQ_QUE_SIZE];
           TS_Req* pstSendReq = (TS_Req*)ucSendReq;
           pstSendReq->unReqType = READMID_PLAY_NOTS;
           TS_READMIDPlayNotsParam* pstNotsParam = (TS_READMIDPlayNotsParam*)pstSendReq->ucParam;
-          uint32_t ulErr = TelCmdProc(pstNotsParam, g_cTelnetBuffer, g_ulTelnetBufferCount);
+          uint32_t ulErr = UdpCmdProc(pstNotsParam, g_cUdpBuffer, g_ulUdpBufferCount);
           if (ulErr == 0)
           {
             xQueueSend(g_pstREADMIDQueue, pstSendReq, 100);
@@ -113,12 +114,11 @@ void HTTPTask(void* pvParameters){
         else
         {
           // バッファに詰め込む
-          g_cTelnetBuffer[g_ulTelnetBufferCount] = bChar;
-          g_ulTelnetBufferCount++;
+          g_cUdpBuffer[g_ulUdpBufferCount] = bChar;
+          g_ulUdpBufferCount++;
         }
       }
     }
-    delay(10);
   }
 }
 
@@ -189,7 +189,7 @@ void handleSeek() {
   server.send(200, "text/plain", "Seek: " + value);
 }
 
-uint32_t TelCmdProc(TS_READMIDPlayNotsParam* pstParam, char* cBuffer, uint32_t ulSize)
+uint32_t UdpCmdProc(TS_READMIDPlayNotsParam* pstParam, char* cBuffer, uint32_t ulSize)
 {
   if (pstParam == NULL || cBuffer == NULL || ulSize == 0) {
     return 1; // エラー: 無効な引数
