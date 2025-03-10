@@ -83,7 +83,7 @@ void HTTPTask(void* pvParameters){
 
     if (telnetClient && telnetClient.connected()) {
       while  (telnetClient.available()) {
-        char bChar = client.read();;
+        char bChar = telnetClient.read();;
         Serial.write(bChar);
         if (bChar == 'D')
         {
@@ -201,13 +201,13 @@ uint32_t TelCmdProc(TS_READMIDPlayNotsParam* pstParam, char* cBuffer, uint32_t u
   }
 
   // コマンド文字列をトークンに分割
-  char* token = strtok(cBuffer, ' ');
+  char* token = strtok(cBuffer, " ");
   if (token == NULL) {
     return 3; // エラー: トークン分割失敗
   }
 
   // ノート数を取得
-  token = strtok(NULL, ' ');
+  token = strtok(NULL, " ");
   if (token == NULL) {
     return 4; // エラー: ノート数が見つからない
   }
@@ -221,13 +221,13 @@ uint32_t TelCmdProc(TS_READMIDPlayNotsParam* pstParam, char* cBuffer, uint32_t u
 
   // ノート番号とベロシティを取得
   for (int i = 0; i < noteCount; i++) {
-    token = strtok(NULL, ' ');
+    token = strtok(NULL, " ");
     if (token == NULL) {
       return 6; // エラー: ノート番号が見つからない
     }
     pstParam->stInfo[i].ucScale = (uint8_t)atoi(token);
 
-    token = strtok(NULL, ' ');
+    token = strtok(NULL, " ");
     if (token == NULL) {
       return 7; // エラー: ベロシティが見つからない
     }
