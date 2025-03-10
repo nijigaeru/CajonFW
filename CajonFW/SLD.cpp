@@ -148,6 +148,7 @@ uint8_t process_drum_hit(uint8_t note) {
   // 打面（中央） → バスドラム
   if (note == 36 // Bass Drum 1
   ||  note == 35 // Bass Drum 2
+  ||  note == 34 // Bass Drum 2
   ) {
       return 0; // 打面（中央）
   }
