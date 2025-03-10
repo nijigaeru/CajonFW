@@ -150,6 +150,11 @@ void READMIDTask(void* pvParameters) {
                 break;
             } // endcase
           }
+          else
+          {
+            // リセット
+            ResetStructProc ( &stTaskParam );
+          }
           break;
         case FMG_READ_ANS   :/* リード完了要求 */
           if(pstRecvReq->unError == 0)
@@ -181,6 +186,18 @@ void READMIDTask(void* pvParameters) {
             pstSendReq->ulSize = 0;
             xQueueSend(g_pstREADMIDQueue, pstSendReq, 100);
           }
+          else
+          {
+            // リセット
+            ResetStructProc ( &stTaskParam );
+            // ファイルクローズ要求
+            pstSendReq->unReqType = FMG_CLOSE;
+            pstSendReq->pstAnsQue = g_pstREADMIDQueue;
+            pstSendReq->ulSize = sizeof(TS_FMGReadParam);
+            pstRead->pucBuffer = g_ucBuffer;
+            pstRead->ulLength = BUFSIZE;
+            xQueueSend(g_pstFMGQueue, pstSendReq, 100);
+          }
           break;
 
         case READMID_PAUSE  :/* 一時停止要求 */
@@ -202,21 +219,25 @@ void READMIDTask(void* pvParameters) {
           switch (stTaskParam.ucState)
           {
           case ST_IDLE:
-            TS_READMIDPlayNotsParam* pstNots = (TS_READMIDPlayNotsParam*)pstRecvReq->ucParam;
-            for (uint32_t ulI=0;ulI < pstNots->unNum; ulI++)
             {
-              uint8_t targetSld = process_drum_hit(pstNots->stInfo[ulI].ucScale);
-              if ((targetSld < SLD_NUM) && (pstNots->stInfo[ulI].ucVelocity != 0))
+              TS_READMIDPlayNotsParam* pstNots = (TS_READMIDPlayNotsParam*)pstRecvReq->ucParam;
+              for (uint32_t ulI=0;ulI < pstNots->unNum; ulI++)
               {
-                pstSendReq->unReqType = SLD_TURN_ON;
-                pstSLDParam->ucPower = pstNots->stInfo[ulI].ucVelocity;
-                xQueueSend(g_pstSLDQueue[i], pstSendReq, 100);
+                uint8_t targetSld = process_drum_hit(pstNots->stInfo[ulI].ucScale);
+                if ((targetSld < SLD_NUM) && (pstNots->stInfo[ulI].ucVelocity != 0))
+                {
+                  pstSendReq->unReqType = SLD_TURN_ON;
+                  pstSLDParam->ucPower = pstNots->stInfo[ulI].ucVelocity;
+                  xQueueSend(g_pstSLDQueue[targetSld], pstSendReq, 100);
+                }
               }
             }
             break;
           default:
+            // 何もしない
             break;
           }
+          break;
         case READMID_SELF   :/* 動作継続要求 */
             // 内部処理部(MIDIリード)
             switch (stTaskParam.ucState)

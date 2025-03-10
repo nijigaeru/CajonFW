@@ -53,7 +53,7 @@ enum READMIDState {
 typedef struct STagREADMIDStartParam {
   char ucFileName[32];
 }TS_READMIDStartParam;
-typedef struct STagREADMIDPlayNotsParam {
+typedef struct STagREADMIDNotsInfo {
   uint8_t ucScale;      // 音階
   uint8_t ucVelocity;   // 音量
 }TS_READMIDPNotsInfo;
