@@ -115,10 +115,17 @@ void READMIDTask(void* pvParameters) {
 
               stTaskParam.ucState = ST_WAIT_OPEN;
               break;
-            
-            default:
-              // 何もしない
+            case ST_PAUSE_REQ:
+              stTaskParam.ucState          = stTaskParam.ucStatePause;  // ステート再開
+              // 動作継続要求を送る
+              pstSendReq->unReqType = READMID_SELF;
+              pstSendReq->pstAnsQue = NULL;
+              pstSendReq->ulSize = 0;
+              xQueueSend(g_pstREADMIDQueue, pstSendReq, 100);
               break;
+            default:
+            // 何もしない
+            break;
           } // endcase
           break;
 
@@ -144,7 +151,6 @@ void READMIDTask(void* pvParameters) {
             } // endcase
           }
           break;
-
         case FMG_READ_ANS   :/* リード完了要求 */
           if(pstRecvReq->unError == 0)
           {
@@ -178,31 +184,12 @@ void READMIDTask(void* pvParameters) {
           break;
 
         case READMID_PAUSE  :/* 一時停止要求 */
-          if(pstRecvReq->unError == 0)
-          {
-            stTaskParam.ucStatePause     = stTaskParam.ucState; // ステート保持
-            stTaskParam.ucState          = ST_PAUSE_REQ;
-          }
+          stTaskParam.ucStatePause     = stTaskParam.ucState; // ステート保持
+          stTaskParam.ucState          = ST_PAUSE_REQ;
           break;
-
-        case READMID_RESTART:/* 再生再開要求 */
-          if(pstRecvReq->unError == 0)
-          {
-            stTaskParam.ucState          = stTaskParam.ucStatePause;  // ステート再開
-            // 動作継続要求を送る
-            pstSendReq->unReqType = READMID_SELF;
-            pstSendReq->pstAnsQue = NULL;
-            pstSendReq->ulSize = 0;
-            xQueueSend(g_pstREADMIDQueue, pstSendReq, 100);
-          }
-          break;
-
         case READMID_END    :/* 終了要求 */
-          if(pstRecvReq->unError == 0)
-          {
-            // リセット
-            ResetStructProc ( &stTaskParam );
-          }
+          // リセット
+          ResetStructProc ( &stTaskParam );
           // ファイルクローズ要求
           pstSendReq->unReqType = FMG_CLOSE;
           pstSendReq->pstAnsQue = g_pstREADMIDQueue;
@@ -211,7 +198,25 @@ void READMIDTask(void* pvParameters) {
           pstRead->ulLength = BUFSIZE;
           xQueueSend(g_pstFMGQueue, pstSendReq, 100);
           break;
-
+        case READMID_PLAY_NOTS:
+          switch (stTaskParam.ucState)
+          {
+          case ST_IDLE:
+            TS_READMIDPlayNotsParam* pstNots = (TS_READMIDPlayNotsParam*)pstRecvReq->ucParam;
+            for (uint32_t ulI=0;ulI < pstNots->unNum; ulI++)
+            {
+              uint8_t targetSld = process_drum_hit(pstNots->stInfo[ulI].ucScale);
+              if ((targetSld < SLD_NUM) && (pstNots->stInfo[ulI].ucVelocity != 0))
+              {
+                pstSendReq->unReqType = SLD_TURN_ON;
+                pstSLDParam->ucPower = pstNots->stInfo[ulI].ucVelocity;
+                xQueueSend(g_pstSLDQueue[i], pstSendReq, 100);
+              }
+            }
+            break;
+          default:
+            break;
+          }
         case READMID_SELF   :/* 動作継続要求 */
             // 内部処理部(MIDIリード)
             switch (stTaskParam.ucState)

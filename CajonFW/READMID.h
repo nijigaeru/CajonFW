@@ -13,11 +13,10 @@ extern QueueHandle_t g_pstREADMIDQueue;
 enum READMIDRequestType {
   READMID_START  = READMID_REQ_BEGIN, // 動作開始要求
   READMID_PAUSE                     , // 一時停止
-  READMID_RESTART                   , // 再開
   // READMID_RETURN ,                 // 巻き戻し 
   READMID_SELF                      , // 動作継続要求
-  READMID_END                         // 終了
-  
+  READMID_END                       , // 終了
+  READMID_PLAY_NOTS                 , // ノーツ単位の処理実行要求
 };
 
 // taskのステート
@@ -54,6 +53,15 @@ enum READMIDState {
 typedef struct STagREADMIDStartParam {
   char ucFileName[32];
 }TS_READMIDStartParam;
+typedef struct STagREADMIDPlayNotsParam {
+  uint8_t ucScale;      // 音階
+  uint8_t ucVelocity;   // 音量
+}TS_READMIDPNotsInfo;
+
+typedef struct STagREADMIDPlayNotsParam {
+  uint16_t unNum;               // ノーツ数
+  TS_READMIDPNotsInfo stInfo[8];   // ノーツ情報
+}TS_READMIDPlayNotsParam;
 
 // タスク内データ構造体
 typedef struct STagREADMIDTaskParam {

@@ -9,6 +9,8 @@
 const char* ssid = "tobukaeru_Cajon"; // アクセスポイントのSSID
 const char* password = "tobukaeru_Cajon"; // アクセスポイントのパスワード
 char Filename[32];
+char g_cTelnetBuffer[256];          // テルネット用バッファ
+uint32_t g_ulTelnetBufferCount;     // テルネット用バッファカウント
 
 // キューの定義
 QueueHandle_t g_pstHTTPQueue;
@@ -32,6 +34,8 @@ void handleStopTrack();
 void handlePlayTrack();
 void handleSeek();
 void connectToWiFi();
+
+uint32_t TelCmdProc(TS_READMIDPlayNotsParam* pstParam, char* cBuffer, uint32_t ulSize);
 
 /************************** */
 // HTTPタスク
@@ -78,8 +82,40 @@ void HTTPTask(void* pvParameters){
     }
 
     if (telnetClient && telnetClient.connected()) {
-      if (telnetClient.available()) {
-        Serial.write(telnetClient.read());
+      while  (telnetClient.available()) {
+        char bChar = client.read();;
+        Serial.write(bChar);
+        if (bChar == 'D')
+        {
+          /* バッファのクリア */
+          g_ulTelnetBufferCount =0;
+          telnetClient.flush();
+          // バッファに詰め込む
+          g_cTelnetBuffer[g_ulTelnetBufferCount] = bChar;
+          g_ulTelnetBufferCount++;
+        }
+        else if (bChar == '\r')
+        {
+          // バッファにスペース詰め込む(処理の共通化のため)
+          g_cTelnetBuffer[g_ulTelnetBufferCount] = ' ';
+          g_ulTelnetBufferCount++;
+          // ノーツ実行要求を送信する。
+          uint8_t ucSendReq[REQ_QUE_SIZE];
+          TS_Req* pstSendReq = (TS_Req*)ucSendReq;
+          pstSendReq->unReqType = READMID_PLAY_NOTS;
+          TS_READMIDPlayNotsParam* pstNotsParam = (TS_READMIDPlayNotsParam*)pstSendReq->ucParam;
+          uint32_t ulErr = TelCmdProc(pstNotsParam, g_cTelnetBuffer, g_ulTelnetBufferCount);
+          if (ulErr == 0)
+          {
+            xQueueSend(g_pstREADMIDQueue, pstSendReq, 100);
+          }
+        }
+        else
+        {
+          // バッファに詰め込む
+          g_cTelnetBuffer[g_ulTelnetBufferCount] = bChar;
+          g_ulTelnetBufferCount++;
+        }
       }
     }
     delay(10);
@@ -151,4 +187,52 @@ void handleSeek() {
   // コールバック処理
   Serial.println("Seek requested: " + value);
   server.send(200, "text/plain", "Seek: " + value);
+}
+
+uint32_t TelCmdProc(TS_READMIDPlayNotsParam* pstParam, char* cBuffer, uint32_t ulSize)
+{
+  if (pstParam == NULL || cBuffer == NULL || ulSize == 0) {
+    return 1; // エラー: 無効な引数
+  }
+
+  // コマンドが 'D' で始まるか確認
+  if (cBuffer[0] != 'D') {
+    return 2; // エラー: 無効なコマンド
+  }
+
+  // コマンド文字列をトークンに分割
+  char* token = strtok(cBuffer, ' ');
+  if (token == NULL) {
+    return 3; // エラー: トークン分割失敗
+  }
+
+  // ノート数を取得
+  token = strtok(NULL, ' ');
+  if (token == NULL) {
+    return 4; // エラー: ノート数が見つからない
+  }
+
+  int noteCount = atoi(token);
+  if (noteCount < 1 || noteCount > 8) {
+    return 5; // エラー: ノート数が範囲外
+  }
+
+  pstParam->unNum = noteCount;
+
+  // ノート番号とベロシティを取得
+  for (int i = 0; i < noteCount; i++) {
+    token = strtok(NULL, ' ');
+    if (token == NULL) {
+      return 6; // エラー: ノート番号が見つからない
+    }
+    pstParam->stInfo[i].ucScale = (uint8_t)atoi(token);
+
+    token = strtok(NULL, ' ');
+    if (token == NULL) {
+      return 7; // エラー: ベロシティが見つからない
+    }
+    pstParam->stInfo[i].ucVelocity = (uint8_t)atoi(token);
+  }
+
+  return 0; // 成功
 }
