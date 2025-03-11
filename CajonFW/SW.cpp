@@ -15,7 +15,7 @@
 #include "REQ.h"
 
 /******** macro  ***** */
-#define LONG_PUSH_TIME  1000   // 長押し判定時間(msec)
+#define LONG_PUSH_TIME  10000   // 長押し判定時間(msec)
 #define SW_INVALID_TIME 100     // 無効時間(msec)
 #define DEBOUNCE_DELAY 500  // デバウンス時間 (ミリ秒) 　ひとまずかなり長め
 // #define SW_DEBUG
@@ -87,7 +87,8 @@ void SWInteruptProc(TS_SWParam* pstParam, uint32_t ulSWPin, uint32_t ulCh, char*
         // 長押し用の要求を通知する
         pstSendReq->unReqType = pstParam->unLongPushReq;
         TS_SLDOnParam* pstSLDParam = (TS_SLDOnParam*)pstSendReq->ucParam;
-        pstSLDParam->ucPower = 255;
+        //pstSLDParam->ucPower = 255;
+        pstSLDParam->ucPower = (uint8_t)(16*ulCh+127);
         xQueueSendFromISR(*(pstParam->pstLongQue), pstSendReq, &xHigherPriorityTaskWoken);
         // pstSendReq->unReqType = ;
         //TS_SLDOnParam* pstSLDParam = (TS_SLDOnParam*)pstSendReq->ucParam;
@@ -131,8 +132,8 @@ void SWInteruptProc(TS_SWParam* pstParam, uint32_t ulSWPin, uint32_t ulCh, char*
 
   #endif
 
-  USBSerial.print("File : ");
-  USBSerial.println(filename);
+  Serial.print("File : ");
+  Serial.println(filename);
 
   uint8_t ucSendReq[REQ_QUE_SIZE] = { 0 };
   TS_Req* pstSendReq = (TS_Req*)ucSendReq;
