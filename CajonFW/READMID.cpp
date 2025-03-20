@@ -407,7 +407,7 @@ void READMIDTask(void* pvParameters) {
                     if (ucSLDOn[i] != 0)
                     {
                       pstSendReq->unReqType = SLD_TURN_ON;
-                      pstSLDParam->ucPower = ucMidiVelocity;
+                      pstSLDParam->ucPower = ucSLDOn[i];
                       xQueueSend(g_pstSLDQueue[i], pstSendReq, 100);
                       ucSLDOn[i] = 0;
                     }
