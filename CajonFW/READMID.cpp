@@ -221,14 +221,22 @@ void READMIDTask(void* pvParameters) {
           case ST_IDLE:
             {
               TS_READMIDPlayNotsParam* pstNots = (TS_READMIDPlayNotsParam*)pstRecvReq->ucParam;
+              uint8_t vel[SLD_NUM] = {0};
               for (uint32_t ulI=0;ulI < pstNots->unNum; ulI++)
               {
                 uint8_t targetSld = process_drum_hit(pstNots->stInfo[ulI].ucScale);
                 if ((targetSld < SLD_NUM) && (pstNots->stInfo[ulI].ucVelocity != 0))
                 {
+                  vel[targetSld] = pstNots->stInfo[ulI].ucVelocity;
+                }
+              }
+              for (uint8_t i = 0; i < SLD_NUM; i++)
+              {
+                if (vel[i] != 0)
+                {
                   pstSendReq->unReqType = SLD_TURN_ON;
-                  pstSLDParam->ucPower = pstNots->stInfo[ulI].ucVelocity;
-                  xQueueSend(g_pstSLDQueue[targetSld], pstSendReq, 100);
+                  pstSLDParam->ucPower = vel[i];
+                  xQueueSend(g_pstSLDQueue[i], pstSendReq, 100);
                 }
               }
             }
