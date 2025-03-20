@@ -1,5 +1,6 @@
 #include <WiFi.h>
 #include <WebServer.h>
+#include <DNSServer.h> // DNSサーバー用ライブラリ
 #include <WiFiUdp.h>
 #include "HTTP_SERVER.h"
 #include "READMID.h"
@@ -16,12 +17,14 @@ uint32_t g_ulUdpBufferCount;     // UDP用バッファカウント
 // キューの定義
 QueueHandle_t g_pstHTTPQueue;
 WebServer server(80);
+DNSServer dnsServer; // DNSサーバーインスタンス
 WiFiUDP udp; // UDPインスタンス
 
 IPAddress local_IP(192,168,4,1);
 IPAddress gateway(192,168,4,1);
 IPAddress subnet(255,255,255,0);
 unsigned int localUdpPort = 23; // UDPポート番号
+const byte DNS_PORT = 53; // DNSサーバーポート
 char incomingPacket[256]; // 受信パケット用バッファ
 char replyPacket[] = "Hi there! Got the message"; // 応答メッセージ
 
@@ -29,6 +32,7 @@ char replyPacket[] = "Hi there! Got the message"; // 応答メッセージ
 void HTTPTask(void* pvParameters);   //HTTPタスク
 bool g_bWifiConncet = false;
 void handleInitial();
+void handleWindowsDetect();
 void handlePlaylist();
 void handlePrevTrack();
 void handleStartTrack();
@@ -51,6 +55,14 @@ void HTTPTask(void* pvParameters){
   Serial.print("AP IP address: ");
   Serial.println(IP);
 
+  // DNSサーバーの設定: すべてのドメインをローカルIPにリダイレクト
+  dnsServer.start(DNS_PORT, "*", local_IP);
+
+  // キャプティブポータル検出用のリクエストに対応
+  server.on("/generate_204", handleInitial); // Android用
+  server.on("/hotspot-detect.html", handleInitial); // iOS用
+  server.on("/connecttest.txt", handleWindowsDetect); // Windows用
+
   // HTTPサーバーの設定
   server.on("/", handleInitial);
   server.on("/playlist.html", handlePlaylist);
@@ -72,7 +84,8 @@ void HTTPTask(void* pvParameters){
 
   while(1)
   {
-    server.handleClient();
+    dnsServer.processNextRequest(); // DNSリクエストを処理
+    server.handleClient();          // HTTPリクエストを処理
     
     int packetSize = udp.parsePacket();
     if (packetSize) {
@@ -124,6 +137,11 @@ void HTTPTask(void* pvParameters){
 
 void handleInitial() {
   server.send_P(200, "text/html", initialHtml);
+}
+
+// Windows用のキャプティブポータル検出リクエストのハンドラ
+void handleWindowsDetect() {
+  server.send(200, "text/plain", "Microsoft Connect Test");
 }
 
 void handlePlaylist() {
