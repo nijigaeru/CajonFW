@@ -65,7 +65,7 @@ const char playlistHtml[] PROGMEM = R"rawliteral(
                 <div class="menu-item" onclick="goToHome()">スタート画面に戻る</div>
                 <div class="menu-item">メニュー項目2</div>
             </div>
-            <div class="track-name">千本桜</div>
+            <div class="track-name" id="TrackName">曲名</div>
             <!-- シークバー（見た目のみ） -->
             <input type="range" id="progressBar" class="progress-bar" value="0" max="100">
             <!-- コントロールボタン類 -->
@@ -77,9 +77,9 @@ const char playlistHtml[] PROGMEM = R"rawliteral(
             </div>
             <div class="track-list">
                 <!-- Arduinoコード内では曲数分ループ回す? -->
-                <div class="track" onclick="playTrack('senbon_only6drams_001.mid')">千本桜</div>
-                <div class="track" onclick="playTrack('aruitekaerou.mid')">上を向いて歩こう</div>
-                <div class="track" onclick="playTrack('papurika.mid')">パプリカ</div>
+                <div class="track" onclick="playTrack('senbon_only6drams_001.mid','千本桜')">千本桜</div>
+                <div class="track" onclick="playTrack('aruitekaerou.mid','歩いて帰ろう')">歩いて帰ろう</div>
+                <div class="track" onclick="playTrack('papurika.mid','パプリカ')">パプリカ</div>
             </div>
         </div>
         <script>
@@ -108,13 +108,10 @@ const char playlistHtml[] PROGMEM = R"rawliteral(
             function stopTrack() {
                 fetch('/stopTrack');
             }
-            function playTrack(trackName) {
-                fetch('/playTrack?name=' + encodeURIComponent(trackName))
-                  .then(response => {
-                    if (response.ok) {
-                      document.getElementById('trackName').innerText = trackName;
-                    }
-                  });
+            function playTrack(fileName,trackName) {
+                fetch('/playTrack?name=' + encodeURIComponent(fileName))
+                let name = document.getElementById('TrackName');
+                name.textContent = trackName;
             }
             // 絵文字を文字コードで比較してオン/オフ切り替え
             function startPause() {
