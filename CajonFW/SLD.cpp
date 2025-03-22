@@ -121,7 +121,7 @@ const uint8_t drum_mapping[128] = {
   255, // 31  (未使用)
   3,   // 32  Sticks → 木片
   255, // 33  (未使用)
-  3,   // 34  Bass Drum 2? (要確認) → 木片
+  1,   // 34  Bass Drum 2? (要確認) → 打面（上）
   0,   // 35  Bass Drum 2 → 打面（中央）
   0,   // 36  Bass Drum 1 → 打面（中央）
   3,   // 37  Side Stick → 木片
