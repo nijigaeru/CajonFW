@@ -18,8 +18,8 @@
 QueueHandle_t g_pstSLDQueue[SLD_NUM];
 bool g_ulSLDInitFlg[SLD_NUM] = {false};
 uint8_t fetPins[] = { PIN_FET1, PIN_FET2, PIN_FET3, PIN_FET4, PIN_FET5, PIN_FET6, PIN_FET7, PIN_FET8 };
-uint32_t g_ulSldOnTime[] = { 10, 10, 10, 8, 10, 10, 10, 10}; // ソレノイド駆動時間（ミリ秒）
-uint32_t g_ulBeginDelay[] = { 10, 10, 10, 10, 0, 10, 5, 5 };
+uint32_t g_ulSldOnTime[] = { 10, 10, 10, 10, 10, 10, 10, 10}; // ソレノイド駆動時間（ミリ秒）
+uint32_t g_ulBeginDelay[] = { 10, 10, 10, 15, 0, 15, 5, 5 };
 uint8_t g_ucMinPower[] = { 80, 80, 80, 80, 70, 70, 70, 100 };
 uint32_t g_ulFetCount = 1;
 const double  PWM_Hz = 2000;   // PWM周波数
@@ -121,7 +121,7 @@ const uint8_t drum_mapping[128] = {
   255, // 31  (未使用)
   3,   // 32  Sticks → 木片
   255, // 33  (未使用)
-  0,   // 34  Bass Drum 2? (要確認) → 打面（中央）
+  3,   // 34  Bass Drum 2? (要確認) → 木片
   0,   // 35  Bass Drum 2 → 打面（中央）
   0,   // 36  Bass Drum 1 → 打面（中央）
   3,   // 37  Side Stick → 木片
