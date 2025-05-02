@@ -42,10 +42,10 @@ void SLDTask(void* pvParameters) {
   // ピンの初期化
   pinMode(ucSLDPin, OUTPUT);
   // チャンネルと周波数の分解能を設定
-  ledcSetup(ucFetCh, PWM_Hz, PWM_level);
+  ledcSetup(ucFetCh-1, PWM_Hz, PWM_level);
   // ピンとチャンネルの設定
-  ledcAttachPin(ucSLDPin, ucFetCh);
-  ledcWrite(ucFetCh,0);
+  ledcAttachPin(ucSLDPin, ucFetCh-1);
+  ledcWrite(ucFetCh-1,0);
 
   // キューの作成
   g_pstSLDQueue[ucFetCh-1] = xQueueCreate(REQ_QUE_NUM, REQ_QUE_SIZE);
@@ -67,7 +67,7 @@ void SLDTask(void* pvParameters) {
         vTaskDelay(pdMS_TO_TICKS(g_ulBeginDelay[ucFetCh-1]));
         // SLDをONにする
         TS_SLDOnParam* pstSLDOnParam = (TS_SLDOnParam*)pstRecvReq->ucParam;
-        ledcWrite(ucFetCh, g_ucMinPower[ucFetCh-1] + (uint32_t)(255 - g_ucMinPower[ucFetCh-1]) * pstSLDOnParam->ucPower / 127);
+        ledcWrite(ucFetCh-1, g_ucMinPower[ucFetCh-1] + (uint32_t)(255 - g_ucMinPower[ucFetCh-1]) * pstSLDOnParam->ucPower / 127);
         // Serial.print("SLD(");
         // Serial.print(ucFetCh);
         // Serial.print("),power(");
@@ -76,7 +76,7 @@ void SLDTask(void* pvParameters) {
         // 一定時間待つ
         vTaskDelay(pdMS_TO_TICKS(g_ulSldOnTime[ucFetCh-1]));
         // SLDをOFFにする
-        ledcWrite(ucFetCh,0);
+        ledcWrite(ucFetCh-1,0);
         // Serial.print("SLD(");
         // Serial.print(ucFetCh);
         // Serial.println(") turned OFF.");
