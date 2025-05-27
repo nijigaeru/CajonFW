@@ -7,11 +7,11 @@
 // 0 : 打面（中央）
 // 1 : 打面（上）
 // 2 : 打面（角）
-// 3 : 木片
+// 3 : マラカス
 // 4 : タンバリン
 // 5 : 円盤
-// 6 : シンバル
-// 7 : ー
+// 6 : 8インチシンバル
+// 7 : 10インチシンバル
 
 
 // キューの定義
@@ -20,7 +20,7 @@ bool g_ulSLDInitFlg[SLD_NUM] = {false};
 uint8_t fetPins[] = { PIN_FET1, PIN_FET2, PIN_FET3, PIN_FET4, PIN_FET5, PIN_FET6, PIN_FET7, PIN_FET8 };
 uint32_t g_ulSldOnTime[] = { 10, 10, 10, 10, 10, 10, 10, 10}; // ソレノイド駆動時間（ミリ秒）
 uint32_t g_ulBeginDelay[] = { 10, 10, 10, 15, 0, 15, 5, 5 };
-uint8_t g_ucMinPower[] = { 80, 80, 80, 80, 70, 70, 70, 100 };
+uint8_t g_ucMinPower[] = { 80, 80, 80, 80, 70, 70, 70, 70 };
 uint32_t g_ulFetCount = 1;
 const double  PWM_Hz = 2000;   // PWM周波数
 const uint8_t PWM_level = 8; // PWM分解能 16bit(1～256)
@@ -119,14 +119,14 @@ const uint8_t drum_mapping[128] = {
   255, // 29  (未使用)
   255, // 30  (未使用)
   255, // 31  (未使用)
-  3,   // 32  Sticks → 木片
+  3,   // 32  Sticks → マラカス
   255, // 33  (未使用)
   1,   // 34  Bass Drum 2? (要確認) → 打面（上）
   0,   // 35  Bass Drum 2 → 打面（中央）
   0,   // 36  Bass Drum 1 → 打面（中央）
-  3,   // 37  Side Stick → 木片
+  3,   // 37  Side Stick → マラカス
   255, // 38  (未使用)
-  3,   // 39  Hand Clap → 木片
+  3,   // 39  Hand Clap → マラカス
   2,   // 40  Electric Snare → 打面（角）
   1,   // 41  Low Floor Tom → 打面（上）
   5,   // 42  Closed Hi-Hat → 円盤
@@ -136,15 +136,15 @@ const uint8_t drum_mapping[128] = {
   4,   // 46  Open Hi-Hat → タンバリン
   1,   // 47  Mid Tom → 打面（上）
   1,   // 48  High Tom → 打面（上）
-  6,   // 49  Crash Cymbal 1 → シンバル
+  7,   // 49  Crash Cymbal 1 → 10インチシンバル
   1,   // 50  High Tom 1 → 打面（上）
   5,   // 51  Ride Cymbal 1 → 円盤
-  5,   // 52  Chinese Cymbal → 円盤
+  7,   // 52  Chinese Cymbal → 10インチシンバル
   5,   // 53  Ride Bell → 円盤
   4,   // 54  Tambourine → タンバリン
   5,   // 55  Splash Cymbal → 円盤
   255, // 56  (未使用)
-  6,   // 57  Crash Cymbal 2 → シンバル
+  6,   // 57  Crash Cymbal 2 → 8インチシンバル
   255, // 58  (未使用)
   5,   // 59  Ride Cymbal 2 → 円盤
   255, // 60  (未使用)
@@ -162,9 +162,9 @@ const uint8_t drum_mapping[128] = {
   255, // 72  (未使用)
   255, // 73  (未使用)
   255, // 74  (未使用)
-  3,   // 75  Claves → 木片
-  3,   // 76  Hi Wood Block → 木片
-  3,   // 77  Low Wood Block → 木片
+  3,   // 75  Claves → マラカス
+  3,   // 76  Hi Wood Block → マラカス
+  3,   // 77  Low Wood Block → マラカス
   255, // 78  (未使用)
   255, // 79  (未使用)
   255, // 80  (未使用)
