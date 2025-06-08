@@ -18,7 +18,7 @@
 QueueHandle_t g_pstSLDQueue[SLD_NUM];
 bool g_ulSLDInitFlg[SLD_NUM] = {false};
 uint8_t fetPins[] = { PIN_FET1, PIN_FET2, PIN_FET3, PIN_FET4, PIN_FET5, PIN_FET6, PIN_FET7, PIN_FET8 };
-uint32_t g_ulSldOnTime[] = { 10, 50, 50, 10, 10, 10, 10, 10}; // ソレノイド駆動時間（ミリ秒）
+uint32_t g_ulSldOnTime[] = { 10, 10, 10, 10, 10, 10, 10, 10}; // ソレノイド駆動時間（ミリ秒）
 uint32_t g_ulBeginDelay[] = { 10, 10, 10, 15, 0, 15, 5, 5 };
 uint8_t g_ucMinPower[] = { 80, 80, 80, 120, 70, 70, 90, 90 };
 uint32_t g_ulFetCount = 1;
