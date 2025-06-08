@@ -225,7 +225,7 @@ void READMIDTask(void* pvParameters) {
               for (uint32_t ulI=0;ulI < pstNots->unNum; ulI++)
               {
                 uint8_t targetSld = process_drum_hit(pstNots->stInfo[ulI].ucScale);
-                if ((targetSld < SLD_NUM) && (pstNots->stInfo[ulI].ucVelocity != 0))
+                if ((targetSld < SLD_NUM) && (vel[targetSld] < pstNots->stInfo[ulI].ucVelocity))
                 {
                   vel[targetSld] = pstNots->stInfo[ulI].ucVelocity;
                 }

@@ -18,9 +18,9 @@
 QueueHandle_t g_pstSLDQueue[SLD_NUM];
 bool g_ulSLDInitFlg[SLD_NUM] = {false};
 uint8_t fetPins[] = { PIN_FET1, PIN_FET2, PIN_FET3, PIN_FET4, PIN_FET5, PIN_FET6, PIN_FET7, PIN_FET8 };
-uint32_t g_ulSldOnTime[] = { 10, 10, 10, 10, 10, 10, 10, 10}; // ソレノイド駆動時間（ミリ秒）
+uint32_t g_ulSldOnTime[] = { 10, 50, 50, 10, 10, 10, 10, 10}; // ソレノイド駆動時間（ミリ秒）
 uint32_t g_ulBeginDelay[] = { 10, 10, 10, 15, 0, 15, 5, 5 };
-uint8_t g_ucMinPower[] = { 80, 80, 80, 80, 70, 70, 70, 70 };
+uint8_t g_ucMinPower[] = { 80, 80, 80, 120, 70, 70, 90, 90 };
 uint32_t g_ulFetCount = 1;
 const double  PWM_Hz = 2000;   // PWM周波数
 const uint8_t PWM_level = 8; // PWM分解能 16bit(1～256)
@@ -125,7 +125,7 @@ const uint8_t drum_mapping[128] = {
   0,   // 35  Bass Drum 2 → 打面（中央）
   0,   // 36  Bass Drum 1 → 打面（中央）
   3,   // 37  Side Stick → マラカス
-  255, // 38  (未使用)
+  2,   // 38  Acoustic Snare → 打面（角）
   3,   // 39  Hand Clap → マラカス
   2,   // 40  Electric Snare → 打面（角）
   1,   // 41  Low Floor Tom → 打面（上）
@@ -142,20 +142,20 @@ const uint8_t drum_mapping[128] = {
   7,   // 52  Chinese Cymbal → 10インチシンバル
   5,   // 53  Ride Bell → 円盤
   4,   // 54  Tambourine → タンバリン
-  5,   // 55  Splash Cymbal → 円盤
-  255, // 56  (未使用)
+  6,   // 55  Splash Cymbal → 8インチシンバル
+  3,   // 56  Cowbell -> マラカス
   6,   // 57  Crash Cymbal 2 → 8インチシンバル
-  255, // 58  (未使用)
+  3,   // 58  Vibraslap -> マラカス
   5,   // 59  Ride Cymbal 2 → 円盤
-  255, // 60  (未使用)
+  3,   // 60  Hight Bongo → マラカス
   255, // 61  (未使用)
-  255, // 62  (未使用)
-  255, // 63  (未使用)
-  255, // 64  (未使用)
-  255, // 65  (未使用)
-  255, // 66  (未使用)
+  3,   // 62  Mute Hi Conga → マラカス
+  3,   // 63  Open Hi Conga → マラカス
+  3,   // 64  Low Conga → マラカス
+  3,   // 65  High Tambale → マラカス
+  3,   // 66  Low Tambale → マラカス
   255, // 67  (未使用)
-  255, // 68  (未使用)
+  5,   // 68  Cabasa -> 円盤
   255, // 69  (未使用)
   4,   // 70  Maracas → タンバリン
   255, // 71  (未使用)
