@@ -21,6 +21,7 @@ uint8_t fetPins[] = { PIN_FET1, PIN_FET2, PIN_FET3, PIN_FET4, PIN_FET5, PIN_FET6
 uint32_t g_ulSldOnTime[] = { 10, 10, 10, 10, 10, 10, 10, 10}; // ソレノイド駆動時間（ミリ秒）
 uint32_t g_ulBeginDelay[] = { 10, 10, 10, 15, 0, 15, 5, 5 };
 uint8_t g_ucMinPower[] = { 80, 80, 80, 120, 70, 70, 90, 90 };
+uint8_t g_ucMaxPower[] = { 255, 255, 255, 255, 255, 255, 200, 200 };
 uint32_t g_ulFetCount = 1;
 const double  PWM_Hz = 2000;   // PWM周波数
 const uint8_t PWM_level = 8; // PWM分解能 16bit(1～256)
@@ -67,7 +68,7 @@ void SLDTask(void* pvParameters) {
         vTaskDelay(pdMS_TO_TICKS(g_ulBeginDelay[ucFetCh-1]));
         // SLDをONにする
         TS_SLDOnParam* pstSLDOnParam = (TS_SLDOnParam*)pstRecvReq->ucParam;
-        ledcWrite(ucFetCh-1, g_ucMinPower[ucFetCh-1] + (uint32_t)(255 - g_ucMinPower[ucFetCh-1]) * pstSLDOnParam->ucPower / 127);
+        ledcWrite(ucFetCh-1, g_ucMinPower[ucFetCh-1] + (uint32_t)(g_ucMaxPower[ucFetCh-1] - g_ucMinPower[ucFetCh-1]) * pstSLDOnParam->ucPower / 127);
         // Serial.print("SLD(");
         // Serial.print(ucFetCh);
         // Serial.print("),power(");
