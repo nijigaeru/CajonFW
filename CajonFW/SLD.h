@@ -24,6 +24,6 @@ typedef struct StagFETRequest {
 extern void SLDTask(void* pvParameters);
 
 extern uint8_t process_drum_hit(uint8_t note);
-
+extern uint8_t process_drum_hit_2(uint8_t note);
 
 #endif
