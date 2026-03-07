@@ -9,7 +9,7 @@ const char* ssid = "tobukaeru_Cajon"; // AP SSID
 const char* password = "tobukaeru_Cajon"; // APパスワード
 char Filename[32];
 char g_cSerialBuffer[256];      // シリアル受信用バッファ
-uint32_t g_ulSerialBufferCount; // シリアル受信バッファカウント
+uint32_t g_ulSerialBufferCount = 0; // シリアル受信バッファカウント
 
 QueueHandle_t g_pstHTTPQueue;
 WebServer server(80);
@@ -70,21 +70,26 @@ void HTTPTask(void* pvParameters) {
     while (Serial.available()) {
       char bChar = Serial.read();
 
-      if (bChar == 'D') {
-        g_ulSerialBufferCount = 0;
-        g_cSerialBuffer[g_ulSerialBufferCount++] = bChar;
-      } 
-      else if (bChar == '\r') {
-        g_cSerialBuffer[g_ulSerialBufferCount++] = ' ';
+      if (bChar == '\r' || bChar == '\n') {
+        g_cSerialBuffer[g_ulSerialBufferCount] = '\0';
 
-        uint8_t ucSendReq[REQ_QUE_SIZE];
-        TS_Req* pstSendReq = (TS_Req*)ucSendReq;
-        pstSendReq->unReqType = READMID_PLAY_NOTS;
-        TS_READMIDPlayNotsParam* pstNotsParam = (TS_READMIDPlayNotsParam*)pstSendReq->ucParam;
+        if (g_ulSerialBufferCount > 0) {
+          if (strcmp(g_cSerialBuffer, "name") == 0) {
+            Serial.println("\"Pokorinta\"");
+          } else if (g_cSerialBuffer[0] == 'D') {
+            g_cSerialBuffer[g_ulSerialBufferCount++] = ' ';
+            g_cSerialBuffer[g_ulSerialBufferCount] = '\0';
 
-        uint32_t ulErr = SerialCmdProc(pstNotsParam, g_cSerialBuffer, g_ulSerialBufferCount);
-        if (ulErr == 0) {
-          xQueueSend(g_pstREADMIDQueue, pstSendReq, 100);
+            uint8_t ucSendReq[REQ_QUE_SIZE];
+            TS_Req* pstSendReq = (TS_Req*)ucSendReq;
+            pstSendReq->unReqType = READMID_PLAY_NOTS;
+            TS_READMIDPlayNotsParam* pstNotsParam = (TS_READMIDPlayNotsParam*)pstSendReq->ucParam;
+
+            uint32_t ulErr = SerialCmdProc(pstNotsParam, g_cSerialBuffer, g_ulSerialBufferCount);
+            if (ulErr == 0) {
+              xQueueSend(g_pstREADMIDQueue, pstSendReq, 100);
+            }
+          }
         }
 
         g_ulSerialBufferCount = 0;
