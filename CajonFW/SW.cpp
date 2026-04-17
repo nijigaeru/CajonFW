@@ -17,7 +17,7 @@
 /******** macro  ***** */
 #define LONG_PUSH_TIME  10000   // 長押し判定時間(msec)
 #define SW_INVALID_TIME 100     // 無効時間(msec)
-#define DEBOUNCE_DELAY 500  // デバウンス時間 (ミリ秒) 　ひとまずかなり長め
+#define DEBOUNCE_DELAY 300  // デバウンス時間 (ミリ秒) 　ひとまずかなり長め
 // #define SW_DEBUG
 
 /******** global variable  ***** */
@@ -152,8 +152,20 @@ void IRAM_ATTR SW1Interrupt() {
   unsigned long interruptTime = millis();
   // デバウンス処理
   if (interruptTime - lastInterruptTime > DEBOUNCE_DELAY) {
-    TS_SWParam* pstParam = &stSWParam[0];
-    SWInteruptProc(pstParam, PIN_SW1, 1, Filename_1);
+    // TS_SWParam* pstParam = &stSWParam[0];
+    // SWInteruptProc(pstParam, PIN_SW1, 1, Filename_1);
+    uint8_t ucSendReq[REQ_QUE_SIZE] = { 0 };
+    TS_Req* pstSendReq = (TS_Req*)ucSendReq;
+    TS_SLDOnParam* pstSLDParam = (TS_SLDOnParam*)pstSendReq->ucParam;
+
+    pstSendReq->unReqType = SLD_TURN_ON;
+    pstSLDParam->ucPower = 30;
+    xQueueSend(g_pstSLDQueue[0], pstSendReq, 100);
+
+    pstSendReq->unReqType = SLD_TURN_ON;
+    pstSLDParam->ucPower = 250;
+    xQueueSend(g_pstSLDQueue[1], pstSendReq, 100);
+
     lastInterruptTime = interruptTime;
   }
 }
@@ -163,8 +175,20 @@ void IRAM_ATTR SW2Interrupt() {
   unsigned long interruptTime = millis();
   // デバウンス処理
   if (interruptTime - lastInterruptTime > DEBOUNCE_DELAY) {
-    TS_SWParam* pstParam = &stSWParam[1];
-    SWInteruptProc(pstParam, PIN_SW2, 2, Filename_2);
+    // TS_SWParam* pstParam = &stSWParam[1];
+    // SWInteruptProc(pstParam, PIN_SW2, 2, Filename_2);
+    uint8_t ucSendReq[REQ_QUE_SIZE] = { 0 };
+    TS_Req* pstSendReq = (TS_Req*)ucSendReq;
+    TS_SLDOnParam* pstSLDParam = (TS_SLDOnParam*)pstSendReq->ucParam;
+
+    pstSendReq->unReqType = SLD_TURN_ON;
+    pstSLDParam->ucPower = 30;
+    xQueueSend(g_pstSLDQueue[0], pstSendReq, 100);
+
+    pstSendReq->unReqType = SLD_TURN_ON;
+    pstSLDParam->ucPower = 250;
+    xQueueSend(g_pstSLDQueue[2], pstSendReq, 100);
+
     lastInterruptTime = interruptTime;
   }
 }
@@ -174,8 +198,8 @@ void IRAM_ATTR SW3Interrupt() {
   unsigned long interruptTime = millis();
   // デバウンス処理
   if (interruptTime - lastInterruptTime > DEBOUNCE_DELAY) {
-    TS_SWParam* pstParam = &stSWParam[2];
-    SWInteruptProc(pstParam, PIN_SW3, 3, Filename_3);
+    // TS_SWParam* pstParam = &stSWParam[2];
+    // SWInteruptProc(pstParam, PIN_SW3, 3, Filename_3);
     lastInterruptTime = interruptTime;
   }
 }
@@ -185,8 +209,8 @@ void IRAM_ATTR SW4Interrupt() {
   unsigned long interruptTime = millis();
   // デバウンス処理
   if (interruptTime - lastInterruptTime > DEBOUNCE_DELAY) {
-    TS_SWParam* pstParam = &stSWParam[3];
-    SWInteruptProc(pstParam, PIN_SW4, 4, Filename_4);
+    // TS_SWParam* pstParam = &stSWParam[3];
+    // SWInteruptProc(pstParam, PIN_SW4, 4, Filename_4);
     lastInterruptTime = interruptTime;
   }
 }

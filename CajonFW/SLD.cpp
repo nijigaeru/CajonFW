@@ -7,11 +7,11 @@
 // 0 : 打面（中央）
 // 1 : 打面（上）
 // 2 : 打面（角）
-// 3 : ー
+// 3 : マラカス
 // 4 : タンバリン
 // 5 : 円盤
-// 6 : シンバル
-// 7 : ー
+// 6 : 8インチシンバル
+// 7 : 10インチシンバル
 
 
 // キューの定義
@@ -19,8 +19,9 @@ QueueHandle_t g_pstSLDQueue[SLD_NUM];
 bool g_ulSLDInitFlg[SLD_NUM] = {false};
 uint8_t fetPins[] = { PIN_FET1, PIN_FET2, PIN_FET3, PIN_FET4, PIN_FET5, PIN_FET6, PIN_FET7, PIN_FET8 };
 uint32_t g_ulSldOnTime[] = { 10, 10, 10, 10, 10, 10, 10, 10}; // ソレノイド駆動時間（ミリ秒）
-uint32_t g_ulBeginDelay[] = { 10, 10, 10, 10, 0, 10, 5, 0 };
-uint8_t g_ucMinPower[] = { 80, 80, 80, 100, 150, 200, 230, 200 };
+uint32_t g_ulBeginDelay[] = { 10, 10, 10, 15, 0, 15, 5, 5 };
+uint8_t g_ucMinPower[] = { 80, 80, 80, 120, 70, 70, 90, 90 };
+uint8_t g_ucMaxPower[] = { 255, 255, 255, 255, 255, 255, 255, 255 };
 uint32_t g_ulFetCount = 1;
 const double  PWM_Hz = 2000;   // PWM周波数
 const uint8_t PWM_level = 8; // PWM分解能 16bit(1～256)
@@ -42,10 +43,10 @@ void SLDTask(void* pvParameters) {
   // ピンの初期化
   pinMode(ucSLDPin, OUTPUT);
   // チャンネルと周波数の分解能を設定
-  ledcSetup(ucFetCh, PWM_Hz, PWM_level);
+  ledcSetup(ucFetCh-1, PWM_Hz, PWM_level);
   // ピンとチャンネルの設定
-  ledcAttachPin(ucSLDPin, ucFetCh);
-  ledcWrite(ucFetCh,0);
+  ledcAttachPin(ucSLDPin, ucFetCh-1);
+  ledcWrite(ucFetCh-1,0);
 
   // キューの作成
   g_pstSLDQueue[ucFetCh-1] = xQueueCreate(REQ_QUE_NUM, REQ_QUE_SIZE);
@@ -67,7 +68,7 @@ void SLDTask(void* pvParameters) {
         vTaskDelay(pdMS_TO_TICKS(g_ulBeginDelay[ucFetCh-1]));
         // SLDをONにする
         TS_SLDOnParam* pstSLDOnParam = (TS_SLDOnParam*)pstRecvReq->ucParam;
-        ledcWrite(ucFetCh, g_ucMinPower[ucFetCh-1] + (uint32_t)(255 - g_ucMinPower[ucFetCh-1]) * pstSLDOnParam->ucPower / 127);
+        ledcWrite(ucFetCh-1, g_ucMinPower[ucFetCh-1] + (uint32_t)(g_ucMaxPower[ucFetCh-1] - g_ucMinPower[ucFetCh-1]) * pstSLDOnParam->ucPower / 127);
         // Serial.print("SLD(");
         // Serial.print(ucFetCh);
         // Serial.print("),power(");
@@ -76,7 +77,7 @@ void SLDTask(void* pvParameters) {
         // 一定時間待つ
         vTaskDelay(pdMS_TO_TICKS(g_ulSldOnTime[ucFetCh-1]));
         // SLDをOFFにする
-        ledcWrite(ucFetCh,0);
+        ledcWrite(ucFetCh-1,0);
         // Serial.print("SLD(");
         // Serial.print(ucFetCh);
         // Serial.println(") turned OFF.");
@@ -85,74 +86,148 @@ void SLDTask(void* pvParameters) {
   }
 }
 
+// MIDIノート番号 → 割り当てる楽器（255 は無視）
+// 2つの楽器を割り当てるため2次元配列に変更
+const uint8_t drum_mapping[128][2] = {
+  {255, 255}, // 0   (未使用)
+  {255, 255}, // 1   (未使用)
+  {255, 255}, // 2   (未使用)
+  {255, 255}, // 3   (未使用)
+  {255, 255}, // 4   (未使用)
+  {255, 255}, // 5   (未使用)
+  {255, 255}, // 6   (未使用)
+  {255, 255}, // 7   (未使用)
+  {255, 255}, // 8   (未使用)
+  {255, 255}, // 9   (未使用)
+  {255, 255}, // 10  (未使用)
+  {255, 255}, // 11  (未使用)
+  {255, 255}, // 12  (未使用)
+  {255, 255}, // 13  (未使用)
+  {255, 255}, // 14  (未使用)
+  {255, 255}, // 15  (未使用)
+  {255, 255}, // 16  (未使用)
+  {255, 255}, // 17  (未使用)
+  {255, 255}, // 18  (未使用)
+  {255, 255}, // 19  (未使用)
+  {255, 255}, // 20  (未使用)
+  {255, 255}, // 21  (未使用)
+  {255, 255}, // 22  (未使用)
+  {255, 255}, // 23  (未使用)
+  {255, 255}, // 24  (未使用)
+  {255, 255}, // 25  (未使用)
+  {255, 255}, // 26  (未使用)
+  {255, 255}, // 27  (未使用)
+  {255, 255}, // 28  (未使用)
+  {255, 255}, // 29  (未使用)
+  {255, 255}, // 30  (未使用)
+  {255, 255}, // 31  (未使用)
+  {3,   255}, // 32  Sticks → マラカス
+  {255, 255}, // 33  (未使用)
+  {1,   255}, // 34  Bass Drum 2? (要確認) → 打面（上）
+  {0,   255}, // 35  Bass Drum 2 → 打面（中央）
+  {0,   255}, // 36  Bass Drum 1 → 打面（中央）
+  {3,   255}, // 37  Side Stick → マラカス
+  {2,   3  }, // 38  Acoustic Snare → 打面（角）, マラカス
+  {3,   255}, // 39  Hand Clap → マラカス
+  {2,   3  }, // 40  Electric Snare → 打面（角）, マラカス
+  {1,   255}, // 41  Low Floor Tom → 打面（上）
+  {5,   255}, // 42  Closed Hi-Hat → 円盤
+  {1,   255}, // 43  High Floor Tom → 打面（上）
+  {5,   255}, // 44  Pedal Hi-Hat → 円盤
+  {1,   255}, // 45  Low Tom → 打面（上）
+  {4,   5  }, // 46  Open Hi-Hat → タンバリン, 円盤
+  {1,   255}, // 47  Mid Tom → 打面（上）
+  {1,   255}, // 48  High Tom → 打面（上）
+  {7,   255}, // 49  Crash Cymbal 1 → 10インチシンバル
+  {1,   255}, // 50  High Tom 1 → 打面（上）
+  {5,   255}, // 51  Ride Cymbal 1 → 円盤
+  {7,   255}, // 52  Chinese Cymbal → 10インチシンバル
+  {5,   255}, // 53  Ride Bell → 円盤
+  {4,   255}, // 54  Tambourine → タンバリン
+  {6,   255}, // 55  Splash Cymbal → 8インチシンバル
+  {3,   255}, // 56  Cowbell -> マラカス
+  {6,   255}, // 57  Crash Cymbal 2 → 8インチシンバル
+  {3,   255}, // 58  Vibraslap -> マラカス
+  {5,   255}, // 59  Ride Cymbal 2 → 円盤
+  {3,   255}, // 60  Hight Bongo → マラカス
+  {255, 255}, // 61  (未使用)
+  {3,   255}, // 62  Mute Hi Conga → マラカス
+  {3,   255}, // 63  Open Hi Conga → マラカス
+  {3,   255}, // 64  Low Conga → マラカス
+  {3,   255}, // 65  High Tambale → マラカス
+  {3,   255}, // 66  Low Tambale → マラカス
+  {255, 255}, // 67  (未使用)
+  {5,   255}, // 68  Cabasa -> 円盤
+  {255, 255}, // 69  (未使用)
+  {4,   255}, // 70  Maracas → タンバリン
+  {255, 255}, // 71  (未使用)
+  {255, 255}, // 72  (未使用)
+  {255, 255}, // 73  (未使用)
+  {255, 255}, // 74  (未使用)
+  {3,   255}, // 75  Claves → マラカス
+  {3,   255}, // 76  Hi Wood Block → マラカス
+  {3,   255}, // 77  Low Wood Block → マラカス
+  {255, 255}, // 78  (未使用)
+  {255, 255}, // 79  (未使用)
+  {255, 255}, // 80  (未使用)
+  {255, 255}, // 81  (未使用)
+  {255, 255}, // 82  (未使用)
+  {255, 255}, // 83  (未使用)
+  {255, 255}, // 84  (未使用)
+  {255, 255}, // 85  (未使用)
+  {255, 255}, // 86  (未使用)
+  {255, 255}, // 87  (未使用)
+  {255, 255}, // 88  (未使用)
+  {255, 255}, // 89  (未使用)
+  {255, 255}, // 90  (未使用)
+  {255, 255}, // 91  (未使用)
+  {255, 255}, // 92  (未使用)
+  {255, 255}, // 93  (未使用)
+  {255, 255}, // 94  (未使用)
+  {255, 255}, // 95  (未使用)
+  {255, 255}, // 96  (未使用)
+  {255, 255}, // 97  (未使用)
+  {255, 255}, // 98  (未使用)
+  {255, 255}, // 99  (未使用)
+  {255, 255}, // 100 (未使用)
+  {255, 255}, // 101 (未使用)
+  {255, 255}, // 102 (未使用)
+  {255, 255}, // 103 (未使用)
+  {255, 255}, // 104 (未使用)
+  {255, 255}, // 105 (未使用)
+  {255, 255}, // 106 (未使用)
+  {255, 255}, // 107 (未使用)
+  {255, 255}, // 108 (未使用)
+  {255, 255}, // 109 (未使用)
+  {255, 255}, // 110 (未使用)
+  {255, 255}, // 111 (未使用)
+  {255, 255}, // 112 (未使用)
+  {255, 255}, // 113 (未使用)
+  {255, 255}, // 114 (未使用)
+  {255, 255}, // 115 (未使用)
+  {255, 255}, // 116 (未使用)
+  {255, 255}, // 117 (未使用)
+  {255, 255}, // 118 (未使用)
+  {255, 255}, // 119 (未使用)
+  {255, 255}, // 120 (未使用)
+  {255, 255}, // 121 (未使用)
+  {255, 255}, // 122 (未使用)
+  {255, 255}, // 123 (未使用)
+  {255, 255}, // 124 (未使用)
+  {255, 255}, // 125 (未使用)
+  {255, 255}, // 126 (未使用)
+  {255, 255}, // 127 (未使用)
+};
+
+// MIDIノート番号を対応する打面に変換（1つ目）
 uint8_t process_drum_hit(uint8_t note) {
-  // 無視する音（カチカチ音・特殊パーカッション）
-  if (note == 37 // Side Stick
-  ||  note == 39 // Hand Clap
-  ||  note == 75 // Claves
-  ||  note == 76 // Hi Wood Block
-  ||  note == 77 // Low Wood Block
-  ) {
-      return 255; // 無視
-  }
-
-  // タンバリン（マラカスも含む）
-  if (note == 46 // Open Hi-Hat
-  ||  note == 54 // Tambourine
-  ||  note == 70 // Maracas
-  ) {
-      return 4; // タンバリン
-  }
-
-  // シンバル
-  if (note == 49 // Crash Cymbal 1
-  ||  note == 57 // Crash Cymbal 2
-  ) {
-      return 6; // シンバル
-  }
-
-  // 小さめのシンバル → 円盤へ
-  if (note == 51 // Ride Cymbal 1
-  ||  note == 52 // Chinese Cymbal
-  ||  note == 53 // Ride Bell
-  ||  note == 55 // Splash Cymbal
-  ||  note == 59 // Ride Cymbal 2
-  ) {
-      return 5; // 円盤
-  }
-
-  // 円盤（クローズドハイハット系 + 小さめのシンバル）
-  if (note == 42 // Closed Hi-Hat
-  ||  note == 44 // Pedal Hi-Hat
-  ) {
-      return 5; // 円盤
-  }
-
-  // 打面（上） → フロアタム系
-  if (note == 41 // Low Floor Tom
-  ||  note == 43 // High Floor Tom
-  ||  note == 45 // Low Tom
-  ||  note == 47 // Mid Tom
-  ||  note == 48 // High Tom
-  ||  note == 50 // High Tom 1
-  ) {
-      return 1; // 打面（上）
-  }
-
-  // 打面（角） → スネア
-  if (note == 40 // Electric Snare
-  ) {
-      return 2; // 打面（角）
-  }
-
-  // 打面（中央） → バスドラム
-  if (note == 36 // Bass Drum 1
-  ||  note == 35 // Bass Drum 2
-  ||  note == 34 // Bass Drum 2
-  ) {
-      return 0; // 打面（中央）
-  }
-
-  // 該当なし（無視）
-  return 255;
+  if (note >= 128) return 255; // 無効なノート番号
+  return drum_mapping[note][0];
 }
+
+// MIDIノート番号を対応する打面に変換（2つ目）
+uint8_t process_drum_hit_2(uint8_t note) {
+  if (note >= 128) return 255; // 無効なノート番号
+  return drum_mapping[note][1];
+}
+

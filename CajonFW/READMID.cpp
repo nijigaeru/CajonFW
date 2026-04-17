@@ -221,14 +221,27 @@ void READMIDTask(void* pvParameters) {
           case ST_IDLE:
             {
               TS_READMIDPlayNotsParam* pstNots = (TS_READMIDPlayNotsParam*)pstRecvReq->ucParam;
+              uint8_t vel[SLD_NUM] = {0};
               for (uint32_t ulI=0;ulI < pstNots->unNum; ulI++)
               {
-                uint8_t targetSld = process_drum_hit(pstNots->stInfo[ulI].ucScale);
-                if ((targetSld < SLD_NUM) && (pstNots->stInfo[ulI].ucVelocity != 0))
+                uint8_t targetSld1 = process_drum_hit(pstNots->stInfo[ulI].ucScale);
+                if ((targetSld1 < SLD_NUM) && (vel[targetSld1] < pstNots->stInfo[ulI].ucVelocity))
+                {
+                  vel[targetSld1] = pstNots->stInfo[ulI].ucVelocity;
+                }
+                uint8_t targetSld2 = process_drum_hit_2(pstNots->stInfo[ulI].ucScale);
+                if ((targetSld2 < SLD_NUM) && (vel[targetSld2] < pstNots->stInfo[ulI].ucVelocity))
+                {
+                  vel[targetSld2] = pstNots->stInfo[ulI].ucVelocity;
+                }
+              }
+              for (uint8_t i = 0; i < SLD_NUM; i++)
+              {
+                if (vel[i] != 0)
                 {
                   pstSendReq->unReqType = SLD_TURN_ON;
-                  pstSLDParam->ucPower = pstNots->stInfo[ulI].ucVelocity;
-                  xQueueSend(g_pstSLDQueue[targetSld], pstSendReq, 100);
+                  pstSLDParam->ucPower = vel[i];
+                  xQueueSend(g_pstSLDQueue[i], pstSendReq, 100);
                 }
               }
             }
@@ -407,7 +420,7 @@ void READMIDTask(void* pvParameters) {
                     if (ucSLDOn[i] != 0)
                     {
                       pstSendReq->unReqType = SLD_TURN_ON;
-                      pstSLDParam->ucPower = ucMidiVelocity;
+                      pstSLDParam->ucPower = ucSLDOn[i];
                       xQueueSend(g_pstSLDQueue[i], pstSendReq, 100);
                       ucSLDOn[i] = 0;
                     }
@@ -689,11 +702,17 @@ void READMIDTask(void* pvParameters) {
                   {
                     // Serial.print("MIDI file note:");
                     // Serial.println(ucMidiScale);
-                    uint8_t targetSld = process_drum_hit(ucMidiScale);
-                    if (targetSld < SLD_NUM)
+                    uint8_t targetSld1 = process_drum_hit(ucMidiScale);
+                    if (targetSld1 < SLD_NUM)
                     {
-                      ucSLDOn[targetSld] = ucMidiVelocity;
+                      ucSLDOn[targetSld1] = ucMidiVelocity;
                     }
+                    uint8_t targetSld2 = process_drum_hit_2(ucMidiScale);
+                    if (targetSld2 < SLD_NUM)
+                    {
+                      ucSLDOn[targetSld2] = ucMidiVelocity;
+                    }
+                    
                   }
                   stTaskParam.ucState = ST_READ_TRACK_DELTA; // 次のイベントを読む
                   ulDeltaTime = 0;
